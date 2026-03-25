@@ -1,0 +1,63 @@
+#!/bin/bash
+env="Overcooked"
+
+layout=$1
+mode=${2:-"online"}
+version="new"
+
+num_env_steps="5e6"
+num_agents=2
+algo="hmarl"
+exp="sp"
+seed_begin=11
+seed_max=15
+ulimit -n 65536
+
+entropy_coefs="0.2 0.05 0.01"
+entropy_coef_horizons="0 5e6 1e7"
+reward_shaping_horizon="1e8"
+agent_policy_names="ppo ppo"
+
+vae_checkpoint_path="/home/juliecandoit98/neurocontroller/checkpoints/vae_epoch_004_1t_random0_medium_4d.pt"
+skill_dim=4
+num_skills=128
+intrinsic_scale=50.0
+intrinsic_alpha=0.9
+t_seg=5
+
+bad_traj_path="/home/juliecandoit98/neurocontroller/zsceval/scripts/overcooked/results/bad_skills/small_corridor_bad_skills_onion_counter_regrab_seed9_step3020000.npy"
+load_seed=9
+load_step=3020000
+
+extra_flags=()
+if [[ "${mode}" == "adhoc" ]]; then
+    seed_begin=${load_seed}
+    seed_max=${load_seed}
+    extra_flags+=(--train_mode adhoc --use_constraint --bad_traj_path "${bad_traj_path}" --constraint_threshold 0.5 --constraint_penalty 1.0 --load_seed ${load_seed} --load_step ${load_step})
+fi
+
+w0="0,0,0,0,0,0.1,0.1,0,0,0.1,0,3,0,10,-2,3,2,2,-2,-2,5,5,0,20,-5,0,7,20,-5,-0.01,-0.01,-0.01,-0.01,30"
+w1="0,0,0,0,0,0.1,0.1,0,0,0.1,0,3,0,10,-2,3,2,2,-2,-2,5,5,0,20,-5,0,7,20,-5,-0.01,-0.01,-0.01,-0.01,30"
+
+echo "env is ${env}, layout is ${layout}, mode is ${mode}, algo is ${algo}, exp is ${exp}, seed from ${seed_begin} to ${seed_max}"
+for seed in $(seq ${seed_begin} ${seed_max});
+do
+    echo "seed is ${seed}:"
+    python train/train_hmarl.py --env_name ${env} --algorithm_name ${algo} --experiment_name ${exp} --layout_name ${layout} --num_agents ${num_agents}  \
+    --seed ${seed} --n_training_threads 1 --n_rollout_threads 50 --dummy_batch_size 2 --num_mini_batch 1 --episode_length 400 --num_env_steps ${num_env_steps} --reward_shaping_horizon ${reward_shaping_horizon} \
+    --overcooked_version ${version} --agent_policy_names ${agent_policy_names}\
+    --ppo_epoch 15 --entropy_coefs ${entropy_coefs} --entropy_coef_horizons ${entropy_coef_horizons} \
+    --use_recurrent_policy --share_policy \
+    --cnn_layers_params "32,3,1,1 64,3,1,1 32,3,1,1" \
+    --use_proper_time_limits \
+    --save_interval 25 --log_interval 10 --use_eval --eval_interval 20 --n_eval_rollout_threads 10 \
+    --skill_dim ${skill_dim} --num_skills ${num_skills} --t_seg ${t_seg} --intrinsic_alpha ${intrinsic_alpha} --intrinsic_scale ${intrinsic_scale} --vae_checkpoint_path ${vae_checkpoint_path} \
+    --use_optuna --optuna_trials 20 --use_eval --eval_interval 20 \
+    --optuna_metric eval/high_mean \
+    --wandb_name "kyungyoon" "${extra_flags[@]}"
+done
+
+# --agent_policy_names ${agent_policy_names}
+# --use_recurent_policy \
+# --use_hsp --w0 ${w0} --w1 ${w1} --share_policy \
+# --use_render --save_gifs --n_render_rollout_threads 1 --render_episodes 1 \
