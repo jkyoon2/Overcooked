@@ -2,6 +2,7 @@
 Modified from OpenAI Baselines code to work with multi-agent envs
 """
 
+import os
 import multiprocessing as mp
 from abc import ABC, abstractmethod
 from multiprocessing import Pipe, Process
@@ -27,6 +28,56 @@ def _parse_reset_result(reset_result):
         available_actions = info.get("available_actions") if isinstance(info, dict) else None
         return obs, share_obs, available_actions, info
     raise ValueError(f"Unexpected reset return length: {len(reset_result)}")
+
+
+def _get_allowed_cpu_ids():
+    try:
+        cpu_ids = psutil.Process().cpu_affinity()
+        if cpu_ids:
+            return sorted(cpu_ids)
+    except (AttributeError, NotImplementedError, OSError):
+        pass
+
+    try:
+        cpu_ids = os.sched_getaffinity(0)
+        if cpu_ids:
+            return sorted(cpu_ids)
+    except (AttributeError, OSError):
+        pass
+
+    cpu_count = psutil.cpu_count() or mp.cpu_count() or 1
+    return list(range(cpu_count))
+
+
+def _get_ranked_cpu_ids():
+    allowed_cpu_ids = _get_allowed_cpu_ids()
+    if not allowed_cpu_ids:
+        return [None]
+
+    try:
+        cpu_percents = psutil.cpu_percent(10, percpu=True)
+    except Exception:
+        return allowed_cpu_ids
+
+    if len(cpu_percents) > max(allowed_cpu_ids):
+        return sorted(allowed_cpu_ids, key=lambda cpu_id: cpu_percents[cpu_id])
+    return allowed_cpu_ids
+
+
+def _set_process_cpu_affinity(cpu_id: int = None):
+    if cpu_id is None:
+        return
+
+    try:
+        allowed_cpu_ids = _get_allowed_cpu_ids()
+        if allowed_cpu_ids and cpu_id not in allowed_cpu_ids:
+            return
+        psutil.Process().cpu_affinity([cpu_id])
+    except (AttributeError, NotImplementedError, OSError, ValueError):
+        # Some container / cpuset environments expose sparse CPU IDs and reject
+        # affinity assignments outside the process's allowed set. In that case
+        # we simply skip pinning instead of crashing the worker.
+        return
 
 
 class CloudpickleWrapper:
@@ -339,8 +390,7 @@ class SubprocVecEnv(ShareVecEnv):
 def shareworker(remote, parent_remote, env_fn_wrapper, worker_id: int = None):
     parent_remote.close()
     env = env_fn_wrapper.x()
-    if worker_id is not None:
-        psutil.Process().cpu_affinity([worker_id])
+    _set_process_cpu_affinity(worker_id)
     while True:
         cmd, data = remote.recv()
         if cmd == "step":
@@ -393,11 +443,7 @@ class ShareSubprocVecEnv(ShareVecEnv):
         self.closed = False
         nenvs = len(env_fns)
         self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(nenvs)])
-        least_used_cpus = sorted(
-            [(c_i, c_percent) for c_i, c_percent in enumerate(psutil.cpu_percent(10, percpu=True))],
-            key=lambda x: x[1],
-        )
-        least_used_cpus = [x[0] for x in least_used_cpus]
+        ranked_cpu_ids = _get_ranked_cpu_ids()
 
         self.ps = [
             Process(
@@ -406,7 +452,7 @@ class ShareSubprocVecEnv(ShareVecEnv):
                     work_remote,
                     remote,
                     CloudpickleWrapper(env_fn),
-                    least_used_cpus[work_id % psutil.cpu_count()],
+                    ranked_cpu_ids[work_id % len(ranked_cpu_ids)],
                 ),
             )
             for work_id, (work_remote, remote, env_fn) in enumerate(zip(self.work_remotes, self.remotes, env_fns))
@@ -496,8 +542,7 @@ def dummyvecenvworker(remote, parent_remote, env_fns_wrapper: CloudpickleWrapper
     env_fns = env_fns_wrapper.x
     share_dummy_vecenv = ShareDummyVecEnv(env_fns)
     # logger.debug("dummyvecenvworker start")
-    if worker_id is not None:
-        psutil.Process().cpu_affinity([worker_id])
+    _set_process_cpu_affinity(worker_id)
     while True:
         cmd, data = remote.recv()
         if cmd == "step":
@@ -552,11 +597,7 @@ class ShareSubprocDummyBatchVecEnv(ShareVecEnv):
 
         env_fn_batchs = self._split_batch(env_fns)
 
-        least_used_cpus = sorted(
-            [(c_i, c_percent) for c_i, c_percent in enumerate(psutil.cpu_percent(10, percpu=True))],
-            key=lambda x: x[1],
-        )
-        least_used_cpus = [x[0] for x in least_used_cpus]
+        ranked_cpu_ids = _get_ranked_cpu_ids()
 
         self.ps = [
             Process(
@@ -565,7 +606,7 @@ class ShareSubprocDummyBatchVecEnv(ShareVecEnv):
                     work_remote,
                     remote,
                     CloudpickleWrapper(env_fn_batch),
-                    least_used_cpus[work_id % psutil.cpu_count()],
+                    ranked_cpu_ids[work_id % len(ranked_cpu_ids)],
                 ),
             )
             for work_id, (work_remote, remote, env_fn_batch) in enumerate(
@@ -931,8 +972,7 @@ def chooseworker(remote, parent_remote, env_fn_wrapper):
 def chooseworker_aff(remote, parent_remote, env_fn_wrapper, worker_id: int = None):
     parent_remote.close()
     env = env_fn_wrapper.x()
-    if worker_id is not None:
-        psutil.Process().cpu_affinity([worker_id])
+    _set_process_cpu_affinity(worker_id)
     while True:
         cmd, data = remote.recv()
         if cmd == "step":
@@ -974,11 +1014,7 @@ class ChooseSubprocVecEnv(ShareVecEnv):
         nenvs = len(env_fns)
         self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(nenvs)])
 
-        least_used_cpus = sorted(
-            [(c_i, c_percent) for c_i, c_percent in enumerate(psutil.cpu_percent(10, percpu=True))],
-            key=lambda x: x[1],
-        )
-        least_used_cpus = [x[0] for x in least_used_cpus]
+        ranked_cpu_ids = _get_ranked_cpu_ids()
 
         self.ps = [
             Process(
@@ -987,7 +1023,7 @@ class ChooseSubprocVecEnv(ShareVecEnv):
                     work_remote,
                     remote,
                     CloudpickleWrapper(env_fn),
-                    least_used_cpus[work_id % psutil.cpu_count()],
+                    ranked_cpu_ids[work_id % len(ranked_cpu_ids)],
                 ),
             )
             for work_id, (work_remote, remote, env_fn) in enumerate(zip(self.work_remotes, self.remotes, env_fns))
