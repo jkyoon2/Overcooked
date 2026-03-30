@@ -32,6 +32,7 @@ if [[ "${population_size}" == "12" ]]; then
     fi
     reward_shaping_horizon="5e7"
     num_env_steps="5e7"
+    final_checkpoint_step="50000000"
     pop="hsp"
     mep_exp="mep-S1-s5"
 elif [[ "${population_size}" == "24" ]]; then
@@ -43,6 +44,7 @@ elif [[ "${population_size}" == "24" ]]; then
     fi
     reward_shaping_horizon="8e7"
     num_env_steps="8e7"
+    final_checkpoint_step="80000000"
     pop="hsp"
     mep_exp="mep-S1-s10"
 elif [[ "${population_size}" == "36" ]]; then
@@ -54,6 +56,7 @@ elif [[ "${population_size}" == "36" ]]; then
     fi
     reward_shaping_horizon="1e8"
     num_env_steps="1e8"
+    final_checkpoint_step="100000000"
     pop="hsp"
     mep_exp="mep-S1-s15"
 fi
@@ -73,6 +76,7 @@ export POLICY_POOL="${policy_pool_root}"
 n_training_threads=100
 n_render_rollout_threads=1
 render_episodes=1
+wandb_name="${WANDB_NAME:-juliejung98}"
 log_dir="${OVERCOOKED_DIR}/log"
 mkdir -p "${log_dir}"
 
@@ -88,6 +92,12 @@ do
     fi
 
     run_dir="${results_root}/${env}/${layout}/${policy_mode}/${algo}/${exp}/seed${seed}"
+    final_actor="${run_dir}/models/hsp_adaptive/actor_periodic_${final_checkpoint_step}.pt"
+    if [[ -f "${final_actor}" ]]; then
+        echo "seed=${seed}, final checkpoint exists at ${final_actor}; skipping"
+        continue
+    fi
+
     ts=$(date +%Y%m%d_%H%M%S)
     run_log="${log_dir}/train_hsp_stage2_${layout}_s${population_size}_seed${seed}_${ts}.log"
     echo "seed=${seed}, run_dir=${run_dir}"
@@ -106,5 +116,5 @@ do
     --population_size "${population_size}" --adaptive_agent_name hsp_adaptive --use_agent_policy_id \
     --use_render --save_gifs --n_render_rollout_threads "${n_render_rollout_threads}" --render_episodes "${render_episodes}" \
     --use_proper_time_limits \
-    --wandb_name "juliejung98" 2>&1 | tee "${run_log}"
+    --wandb_name "${wandb_name}" 2>&1 | tee "${run_log}"
 done

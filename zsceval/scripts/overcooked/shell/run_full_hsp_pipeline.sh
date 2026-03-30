@@ -14,7 +14,7 @@ Runs the full HSP-S2 preparation/training pipeline for one or more layouts:
   5. HSP S2 yaml generation
   6. HSP S2 training
 
-Default layouts are: ttt,tto,too,ooo
+Default layouts are: ttt,tto,too,ooo,1_incentivized_hard,1_forced_hard,2_incentivized_hard,2_forced_hard
 
 Options:
   --layouts <csv|all>            Layout list. Default: all
@@ -26,6 +26,7 @@ Options:
   --free-gpu-mem-max-mb <mb>     Max memory used for an auto-selected idle GPU. Default: 512
   --bias-seed-begin <n>          Default: 1
   --bias-seed-end <n>            Default: 6
+  --bias-seed-cap <n>            Max seed index for auto-extending bias training. Default: layout-specific
   --mep-population-size <n>      Default: 5
   --mep-seed-begin <n>           Default: 1
   --mep-seed-end <n>             Default: 1
@@ -95,6 +96,23 @@ contains_item() {
     return 1
 }
 
+default_bias_seed_cap_for_layout() {
+    local layout="$1"
+    case "${layout}" in
+        random0) echo 30 ;;
+        random0_medium) echo 54 ;;
+        small_corridor) echo 124 ;;
+        random1|random3|unident_s) echo 176 ;;
+        *) echo 72 ;;
+    esac
+}
+
+layout_file_exists() {
+    local layout="$1"
+    [[ -f "${PROJECT_ROOT}/zsceval/envs/overcooked/overcooked_ai_py/data/layouts/${layout}.layout" ]] \
+        || [[ -f "${PROJECT_ROOT}/zsceval/envs/overcooked_new/src/overcooked_ai_py/data/layouts/${layout}.layout" ]]
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OVERCOOKED_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SCRIPTS_DIR="$(cd "${OVERCOOKED_DIR}/.." && pwd)"
@@ -109,6 +127,7 @@ free_gpu_mem_max_mb=512
 
 bias_seed_begin=1
 bias_seed_end=6
+bias_seed_cap=0
 
 mep_population_size=5
 mep_seed_begin=1
@@ -167,6 +186,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --bias-seed-end)
             bias_seed_end="${2:-6}"
+            shift 2
+            ;;
+        --bias-seed-cap)
+            bias_seed_cap="${2:-0}"
             shift 2
             ;;
         --mep-population-size)
@@ -264,16 +287,20 @@ if (( hsp_seed_begin > hsp_seed_end )); then
     echo "[ERROR] Invalid HSP seed range: ${hsp_seed_begin}..${hsp_seed_end}" >&2
     exit 1
 fi
+if (( bias_seed_cap > 0 && bias_seed_cap < bias_seed_end )); then
+    echo "[ERROR] bias seed cap ${bias_seed_cap} must be >= bias_seed_end ${bias_seed_end}" >&2
+    exit 1
+fi
 if (( (hsp_population_size - hsp_k) % 3 != 0 )); then
     echo "[ERROR] (hsp_population_size - hsp_k) must be divisible by 3: S=${hsp_population_size}, k=${hsp_k}" >&2
     exit 1
 fi
-if (( bias_seed_end - bias_seed_begin + 1 < hsp_k )); then
-    echo "[ERROR] Need at least hsp_k=${hsp_k} bias seeds in the configured bias seed range." >&2
+if (( bias_seed_cap > 0 && bias_seed_cap - bias_seed_begin + 1 < hsp_k )); then
+    echo "[ERROR] Configured bias seed cap ${bias_seed_cap} cannot supply hsp_k=${hsp_k} seeds starting at ${bias_seed_begin}." >&2
     exit 1
 fi
 
-all_layouts=(ttt tto too ooo)
+all_layouts=(ttt tto too ooo 1_incentivized_hard 1_forced_hard 2_incentivized_hard 2_forced_hard)
 if [[ "${layouts_csv}" == "all" ]]; then
     layouts=("${all_layouts[@]}")
 else
@@ -288,7 +315,7 @@ fi
 
 filtered_layouts=()
 for layout in "${layouts[@]}"; do
-    if ! contains_item "${layout}" "${all_layouts[@]}"; then
+    if ! contains_item "${layout}" "${all_layouts[@]}" && ! layout_file_exists "${layout}"; then
         echo "[ERROR] Unsupported layout: ${layout}" >&2
         exit 1
     fi
@@ -391,6 +418,183 @@ run_layout_pipeline() {
             "$@"
         }
 
+        count_usable_bias_agents() {
+            if (( dry_run )); then
+                echo "${hsp_k}"
+                return 0
+            fi
+            local out
+            if out="$(
+                python "${SCRIPTS_DIR}/prep/gen_hsp_S2_ymls.py" \
+                    -l "${layout}" -k "${hsp_k}" -s "${mep_population_size}" -S "${hsp_population_size}" \
+                    --count-only 2>/dev/null
+            )"; then
+                printf '%s\n' "${out}" | tail -n 1
+            else
+                echo "0"
+            fi
+        }
+
+        bias_seed_has_training_artifacts() {
+            local seed="$1"
+            local model_dir="${PROJECT_ROOT}/results/${env_name}/${layout}/shared/rmappo/hsp-S1/seed${seed}/models"
+            compgen -G "${model_dir}/actor_periodic_*.pt" >/dev/null
+        }
+
+        run_missing_bias_train_range() {
+            local range_begin="$1"
+            local range_end="$2"
+            local seed
+            local missing_begin=""
+            local prev_seed=""
+
+            for seed in $(seq "${range_begin}" "${range_end}"); do
+                if bias_seed_has_training_artifacts "${seed}"; then
+                    if [[ -n "${missing_begin}" ]]; then
+                        echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] bias seeds ${missing_begin}..${prev_seed} missing locally; training them now"
+                        run_cmd bash "${OVERCOOKED_DIR}/shell/train_bias_agents.sh" \
+                            "${layout}" "${missing_begin}" "${prev_seed}"
+                        missing_begin=""
+                    fi
+                else
+                    if [[ -z "${missing_begin}" ]]; then
+                        missing_begin="${seed}"
+                    fi
+                fi
+                prev_seed="${seed}"
+            done
+
+            if [[ -n "${missing_begin}" ]]; then
+                echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] bias seeds ${missing_begin}..${range_end} missing locally; training them now"
+                run_cmd bash "${OVERCOOKED_DIR}/shell/train_bias_agents.sh" \
+                    "${layout}" "${missing_begin}" "${range_end}"
+            fi
+        }
+
+        mep_seed_has_training_artifacts() {
+            local seed="$1"
+            local model_root="${PROJECT_ROOT}/results/${env_name}/${layout}/shared/mep/mep-S1-s${mep_population_size}/seed${seed}/models"
+            local policy_id
+            for policy_id in $(seq 1 "${mep_population_size}"); do
+                if ! compgen -G "${model_root}/mep${policy_id}/actor_periodic_*.pt" >/dev/null; then
+                    return 1
+                fi
+            done
+            return 0
+        }
+
+        run_missing_mep_train_range() {
+            local range_begin="$1"
+            local range_end="$2"
+            local seed
+            local missing_begin=""
+            local prev_seed=""
+
+            for seed in $(seq "${range_begin}" "${range_end}"); do
+                if mep_seed_has_training_artifacts "${seed}"; then
+                    if [[ -n "${missing_begin}" ]]; then
+                        echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] MEP seeds ${missing_begin}..${prev_seed} missing locally; training them now"
+                        run_cmd bash "${OVERCOOKED_DIR}/shell/train_mep_stage_1.sh" \
+                            "${layout}" "${mep_population_size}" "${missing_begin}" "${prev_seed}"
+                        missing_begin=""
+                    fi
+                else
+                    if [[ -z "${missing_begin}" ]]; then
+                        missing_begin="${seed}"
+                    fi
+                fi
+                prev_seed="${seed}"
+            done
+
+            if [[ -n "${missing_begin}" ]]; then
+                echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] MEP seeds ${missing_begin}..${range_end} missing locally; training them now"
+                run_cmd bash "${OVERCOOKED_DIR}/shell/train_mep_stage_1.sh" \
+                    "${layout}" "${mep_population_size}" "${missing_begin}" "${range_end}"
+            fi
+        }
+
+        mep_policy_pool_ready() {
+            local exp_name="mep-S1-s${mep_population_size}"
+            local policy_id
+            local tag
+            for policy_id in $(seq 1 "${mep_population_size}"); do
+                for tag in init mid final; do
+                    if [[ ! -f "${PROJECT_ROOT}/zsceval/scripts/policy_pool/${layout}/mep/s1/${exp_name}/mep${policy_id}_${tag}_actor.pt" ]]; then
+                        return 1
+                    fi
+                done
+            done
+            return 0
+        }
+
+        ensure_mep_pool_ready() {
+            if mep_policy_pool_ready; then
+                echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] MEP S1 policy pool already ready; skipping redundant MEP work"
+                return 0
+            fi
+
+            run_missing_mep_train_range "${mep_seed_begin}" "${mep_seed_end}"
+            run_cmd python "${SCRIPTS_DIR}/extract_models/extract_pop_S1_models.py" \
+                "${layout}" "${env_name}" --algo mep \
+                --population_size "${mep_population_size}" \
+                --experiment_name "mep-S1-s${mep_population_size}" \
+                --seed "${mep_extract_seed}"
+        }
+
+        ensure_bias_pool_ready_for_hsp() {
+            local usable_count
+            local deficit
+            local next_begin
+            local next_end
+            local current_bias_seed_end="${bias_seed_end}"
+            local local_bias_seed_cap="${bias_seed_cap}"
+
+            if [[ "${local_bias_seed_cap}" == "0" ]]; then
+                local_bias_seed_cap="$(default_bias_seed_cap_for_layout "${layout}")"
+            fi
+
+            usable_count="$(count_usable_bias_agents)"
+            if (( usable_count < hsp_k )); then
+                run_missing_bias_train_range "${bias_seed_begin}" "${current_bias_seed_end}"
+                run_cmd python "${SCRIPTS_DIR}/extract_models/extract_bias_agents_models.py" \
+                    "${layout}" "${env_name}" --wandb_name "${wandb_name}"
+                run_cmd bash "${OVERCOOKED_DIR}/shell/eval_bias_agents_events.sh" "${layout}"
+                usable_count="$(count_usable_bias_agents)"
+            fi
+            echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] usable bias agents=${usable_count}, target=${hsp_k}, bias_seed_cap=${local_bias_seed_cap}"
+
+            while (( usable_count < hsp_k )); do
+                deficit=$((hsp_k - usable_count))
+                next_begin=$((current_bias_seed_end + 1))
+                next_end=$((next_begin + deficit - 1))
+
+                if (( next_begin > local_bias_seed_cap )); then
+                    echo "[ERROR] Layout ${layout} has only ${usable_count} usable bias agents, but hsp_k=${hsp_k} and bias seed cap ${local_bias_seed_cap} has been reached." >&2
+                    exit 1
+                fi
+                if (( next_end > local_bias_seed_cap )); then
+                    next_end="${local_bias_seed_cap}"
+                fi
+
+                echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] extending bias training to seeds ${next_begin}..${next_end} because usable bias agents=${usable_count} < hsp_k=${hsp_k}"
+                run_cmd bash "${OVERCOOKED_DIR}/shell/train_bias_agents.sh" \
+                    "${layout}" "${next_begin}" "${next_end}"
+                current_bias_seed_end="${next_end}"
+
+                run_cmd python "${SCRIPTS_DIR}/extract_models/extract_bias_agents_models.py" \
+                    "${layout}" "${env_name}" --wandb_name "${wandb_name}"
+                run_cmd bash "${OVERCOOKED_DIR}/shell/eval_bias_agents_events.sh" "${layout}"
+
+                usable_count="$(count_usable_bias_agents)"
+                echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] usable bias agents after extension=${usable_count}"
+
+                if (( current_bias_seed_end >= local_bias_seed_cap && usable_count < hsp_k )); then
+                    echo "[ERROR] Layout ${layout} still has only ${usable_count} usable bias agents after training through seed ${current_bias_seed_end}; need ${hsp_k}." >&2
+                    exit 1
+                fi
+            done
+        }
+
         if (( ! dry_run )); then
             if [[ ! -f "${conda_sh}" ]]; then
                 echo "[ERROR] Missing conda activation script: ${conda_sh}" >&2
@@ -409,27 +613,51 @@ run_layout_pipeline() {
         echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
 
         if should_run_stage bias_train; then
-            run_cmd bash "${OVERCOOKED_DIR}/shell/train_bias_agents.sh" \
-                "${layout}" "${bias_seed_begin}" "${bias_seed_end}"
+            initial_usable_bias_count="$(count_usable_bias_agents)"
+            if (( initial_usable_bias_count >= hsp_k )) && { should_run_stage hsp_gen || should_run_stage hsp_train; }; then
+                echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] bias pool already has ${initial_usable_bias_count} usable agents; skipping base bias training"
+            else
+                run_missing_bias_train_range "${bias_seed_begin}" "${bias_seed_end}"
+            fi
         fi
 
         if should_run_stage bias_extract_eval; then
-            run_cmd python "${SCRIPTS_DIR}/extract_models/extract_bias_agents_models.py" \
-                "${layout}" "${env_name}" --wandb_name "${wandb_name}"
-            run_cmd bash "${OVERCOOKED_DIR}/shell/eval_bias_agents_events.sh" "${layout}"
+            preexisting_usable_bias_count="$(count_usable_bias_agents)"
+            if (( preexisting_usable_bias_count >= hsp_k )) && { should_run_stage hsp_gen || should_run_stage hsp_train; }; then
+                echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] bias eval already has ${preexisting_usable_bias_count} usable agents; skipping redundant bias extract/eval"
+            else
+                run_cmd python "${SCRIPTS_DIR}/extract_models/extract_bias_agents_models.py" \
+                    "${layout}" "${env_name}" --wandb_name "${wandb_name}"
+                run_cmd bash "${OVERCOOKED_DIR}/shell/eval_bias_agents_events.sh" "${layout}"
+            fi
+        fi
+
+        if should_run_stage hsp_gen || should_run_stage hsp_train; then
+            ensure_bias_pool_ready_for_hsp
         fi
 
         if should_run_stage mep_train; then
-            run_cmd bash "${OVERCOOKED_DIR}/shell/train_mep_stage_1.sh" \
-                "${layout}" "${mep_population_size}" "${mep_seed_begin}" "${mep_seed_end}"
+            if mep_policy_pool_ready; then
+                echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] MEP S1 policy pool already ready; skipping base MEP training"
+            else
+                run_missing_mep_train_range "${mep_seed_begin}" "${mep_seed_end}"
+            fi
         fi
 
         if should_run_stage mep_extract; then
-            run_cmd python "${SCRIPTS_DIR}/extract_models/extract_pop_S1_models.py" \
-                "${layout}" "${env_name}" --algo mep \
-                --population_size "${mep_population_size}" \
-                --experiment_name "mep-S1-s${mep_population_size}" \
-                --seed "${mep_extract_seed}"
+            if mep_policy_pool_ready; then
+                echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] MEP S1 policy pool already ready; skipping redundant MEP extract"
+            else
+                run_cmd python "${SCRIPTS_DIR}/extract_models/extract_pop_S1_models.py" \
+                    "${layout}" "${env_name}" --algo mep \
+                    --population_size "${mep_population_size}" \
+                    --experiment_name "mep-S1-s${mep_population_size}" \
+                    --seed "${mep_extract_seed}"
+            fi
+        fi
+
+        if should_run_stage hsp_gen || should_run_stage hsp_train; then
+            ensure_mep_pool_ready
         fi
 
         if should_run_stage hsp_gen; then

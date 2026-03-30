@@ -92,6 +92,7 @@ def parse_args():
     parser.add_argument("--adaptive_policy_config", type=str, default="rnn_policy_config.pkl")
     parser.add_argument("--bias_policy_config", type=str, default="rnn_policy_config.pkl")
     parser.add_argument("--population_policy_config", type=str, default="rnn_policy_config.pkl")
+    parser.add_argument("--count-only", action="store_true", help="Print usable bias-agent count and exit.")
 
     args = parser.parse_args()
     return args
@@ -179,8 +180,15 @@ if __name__ == "__main__":
         num_agents=args.num_agents,
     )
     logger.info(f"filtered exp num {len(events.keys())}")
+    if args.count_only:
+        print(len(events))
+        raise SystemExit(0)
     if not events:
         raise RuntimeError(f"No usable bias evaluation results found in {eval_result_dir}")
+    if len(events) < K:
+        raise RuntimeError(
+            f"Need at least k={K} usable bias agents for layout={layout}, but found only {len(events)} in {eval_result_dir}"
+        )
 
     exps, metric_np, df = compute_metric(events, event_types, args.num_agents)
     df.to_excel(eval_result_dir / f"event_count_{policy_version}.xlsx", sheet_name="Events")
