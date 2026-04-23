@@ -1,215 +1,103 @@
-import * as Overcooked from "overcooked"
-let OvercookedGame = Overcooked.OvercookedGame.OvercookedGame;
-let OvercookedMDP = Overcooked.OvercookedMDP;
-let Direction = OvercookedMDP.Direction;
-let Action = OvercookedMDP.Action;
-let PlayerState = OvercookedMDP.PlayerState;
-let OvercookedState = OvercookedMDP.OvercookedState;
-let ObjectState = OvercookedMDP.ObjectState;
+import OvercookedBoardRenderer from "./board-renderer";
 
-let [NORTH, SOUTH, EAST, WEST] = Direction.CARDINAL;
-let [STAY, INTERACT] = [Direction.STAY, Action.INTERACT];
-
-let lookupActions = OvercookedMDP.lookupActions;
-let dictToState = OvercookedMDP.dictToState;
-
-export default class OvercookedTrajectoryReplay{
-    constructor ({
+export default class OvercookedTrajectoryReplay {
+    constructor({
         container_id,
         trajectory,
-        start_grid = [
-            'XXXXXPXX',
-            'O     2O',
-            'T1     T',
-            'XXXDPSXX'
-        ],
-        MAX_TIME = 1, //seconds
-        cook_time=5,
-        init_orders=null,
-        completion_callback = () => {console.log("Time up")},
-        timestep_callback = (data) => {},
+        start_grid,
+        TIMESTEP = 180,
+        cook_time = 20,
+        init_orders = null,
+        focus_step = null,
+        focus_pause_ms = 1000,
+        completion_callback = () => { },
+        focus_callback = () => { },
         DELIVERY_REWARD = 20
-    })
-    {
-
-    	let player_colors = {};
-    	player_colors[0] = 'green';
-        player_colors[1] = 'blue';
-
-        this.game = new OvercookedGame({
-            start_grid,
-            container_id,
-            assets_loc: "../static/assets/",
-            ANIMATION_DURATION: 200*.9,
-            tileSize: 80,
-            COOK_TIME: cook_time,
-            explosion_time: Number.MAX_SAFE_INTEGER,
-            DELIVERY_REWARD: DELIVERY_REWARD,
-            player_colors: player_colors
-        });
+    }) {
+        this.container_id = container_id;
+        this.trajectory = trajectory;
+        this.start_grid = start_grid;
+        this.TIMESTEP = TIMESTEP;
+        this.cook_time = cook_time;
         this.init_orders = init_orders;
-        console.log("Trajectory replay");
-        this.observations = trajectory.ep_states[0];
-        this.actions = trajectory.ep_actions[0];
-        this.total_scores = trajectory.ep_rewards[0].concat();
-        this.MAX_TIME = MAX_TIME;
-        this.time_left = MAX_TIME;
-        this.cur_gameloop = 0;
-        this.score = 0;
+        this.focus_step = focus_step;
+        this.focus_pause_ms = focus_pause_ms;
         this.completion_callback = completion_callback;
-        this.timestep_callback = timestep_callback;
-        this.total_timesteps = this.observations.length - 1;
-        this.paused = false;
-        this.keyboard_paused = false;
-        this.last_step_time = new Date().getTime();
-        this.seconds_per_step = 0.1;
-        this.speed_play = 0;
-        this.speed_seconds_per_step = 0.1;
-    }
+        this.focus_callback = focus_callback;
+        this.focus_triggered = false;
+        this.pause_until = 0;
+        this.closed = false;
 
+        this.observations = trajectory.ep_states[0];
+        this.rewards = trajectory.ep_rewards[0].concat();
+        this.total_timesteps = this.observations.length;
+        this.cur_gameloop = 0;
+        this.renderer = new OvercookedBoardRenderer({
+            container_id: this.container_id,
+            trial: {
+                layout_grid: start_grid,
+                mode: "replay",
+                human_player_index: null,
+                target_agent_index: 0
+            }
+        });
+    }
 
     init() {
-        this.scores = this.total_scores.concat();
-        this.game.init();
-        this.start_time = new Date().getTime();
-        console.log(this.scores, this.scores.length)
-        for (var i = 1; i<=this.total_timesteps; i++) {
-        this.scores[i] += this.scores[i-1]
+        this.renderer.init();
+        this.cumulativeScores = [];
+        let running = 0;
+        for (let i = 0; i < this.rewards.length; i += 1) {
+            running += this.rewards[i];
+            this.cumulativeScores.push(running);
         }
+
         this.gameloop = setInterval(() => {
-        // console.log("1")
-        if (this.cur_gameloop > this.total_timesteps) {
-            this.close();
-        }
-        if (this.cur_gameloop < 0) {
-            this.cur_gameloop = 0;
-        }
-        let game_loop_percentage = Math.round(100 * this.cur_gameloop / this.total_timesteps);
-        document.getElementById("stepSlider").value = game_loop_percentage;
-        if (this.time_left == 0) {
-            this.close();
-        }
-        if (this.paused == false && this.keyboard_paused == false) {
-            this.disable_response_listener();
-            this.last_step_time = new Date().getTime();
-            let state_dict = this.observations[this.cur_gameloop];
-            this.state = dictToState(state_dict);
-            this.game.drawState(this.state);
-
-            let actions_arr = this.actions[this.cur_gameloop];
-            let step_score = this.scores[this.cur_gameloop];
-            this.joint_action = lookupActions(actions_arr);
-            // read the two player actions out of the trajectory
-            // Do a transition and get the next state and reward.
-            let [[next_state, prob], reward] = this.game.mdp.get_transition_states_and_probs_for_replay({
-            state: this.state,
-            joint_action: this.joint_action
-            });
-            // console.log(reward)
-            // this.score += step_score
-            // console.log(step_score)
-            this.game.drawScore(step_score)
-            this.time_left = this.total_timesteps - this.cur_gameloop;
-            this.game.drawTimeLeft(this.time_left);
-
-            //record data
-            this.timestep_callback({
-            state: this.state,
-            joint_action: this.joint_action,
-            next_state: next_state,
-            reward: reward,
-            time_left: this.time_left,
-            score: this.score,
-            time_elapsed: this.cur_gameloop,
-            cur_gameloop: this.cur_gameloop,
-            client_id: undefined,
-            is_leader: undefined,
-            partner_id: undefined,
-            datetime: +new Date()
-            });
-            //set up next timestep
-            this.paused = true;
-            this.activate_response_listener();
-        }
-        let seconds_since_step = (new Date().getTime() - this.last_step_time) / 1000;
-        if (this.keyboard_paused == false) {
-            if (this.speed_play < 0 && seconds_since_step > this.speed_seconds_per_step) {
-            this.paused = false;
-            this.cur_gameloop -= 1;
-            } else if (this.speed_play > 0 && seconds_since_step > this.speed_seconds_per_step) {
-            this.paused = false;
-            this.cur_gameloop += 1;
-            } else if (this.speed_play == 0 && seconds_since_step > this.seconds_per_step) {
-            this.paused = false;
-            this.cur_gameloop += 1;
-            }
-        }
-
-        //time run out
+            this.tick();
         }, this.TIMESTEP);
-        //By default it seems like we'd want to remove the response listener
-        // But we could maybe also keep a response listener that takes in the keys Left and Right
-        // And if it gets left it regresses the state, and if it gets. right, it progresses the state
-        //this.activate_response_listener();
     }
 
-    close () {
-        if (typeof(this.gameloop) !== 'undefined') {
-            clearInterval(this.gameloop);
+    tick() {
+        if (this.closed) {
+            return;
         }
-        this.game.close();
-        this.disable_response_listener();
-        this.completion_callback();
-    }
-
-    activate_response_listener () {
-        var slider = document.getElementById("stepSlider");
-        let total_timesteps = this.total_timesteps;
-        let game = this;
-        slider.oninput = function() {
-            let slider_percent = this.value/100.0;
-            game.cur_gameloop = Math.round(slider_percent*game.total_timesteps);
-            game.paused = false;
+        if (this.pause_until && Date.now() < this.pause_until) {
+            return;
         }
-        $(document).on("keydown", (e) => {
-            switch(e.which) {
-            case 37: // left
-                this.cur_gameloop -= 1;
-                this.speed_play = -1;
-                this.paused = false;
-                break;
+        if (this.cur_gameloop >= this.total_timesteps) {
+            this.close();
+            return;
+        }
 
-            case 39: // right
-                this.cur_gameloop += 1;
-                this.speed_play = +1;
-                this.paused = false;
-                break;
-
-            case 32: //space
-                if (this.keyboard_paused) {
-                    this.keyboard_paused = false;
-                    console.log("Unpausing")
-                }
-                else {
-                    this.keyboard_paused = true;
-                    console.log("Pausing")
-                }
-
-                break;
-            default: return; // exit this handler for other keys
-            }
-            e.preventDefault(); // prevent the default action (scroll / move caret)
+        const state = this.observations[this.cur_gameloop];
+        this.renderer.renderState(state, {
+            mode: "replay",
+            score: this.cumulativeScores[this.cur_gameloop] || 0,
+            time_left: Math.max(this.total_timesteps - this.cur_gameloop, 0),
+            step_count: this.cur_gameloop
         });
 
-	$(document).on("keyup", (e) => {
-            if (e.which == 37 || e.which == 39) {
-		this.speed_play = 0;
-            }
+        if (!this.focus_triggered && this.focus_step !== null && this.cur_gameloop >= this.focus_step) {
+            this.focus_triggered = true;
+            this.pause_until = Date.now() + this.focus_pause_ms;
+            this.focus_callback({
+                focus_step: this.focus_step,
+                current_step: this.cur_gameloop
+            });
+        }
 
-	});
+        this.cur_gameloop += 1;
     }
 
-    disable_response_listener () {
-        $(document).off('keydown');
+    close() {
+        if (this.closed) {
+            return;
+        }
+        this.closed = true;
+        if (typeof this.gameloop !== "undefined") {
+            clearInterval(this.gameloop);
+        }
+        this.renderer.close();
+        this.completion_callback();
     }
 }

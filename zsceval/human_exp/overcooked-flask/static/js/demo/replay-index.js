@@ -1,23 +1,11 @@
-import $ from "jquery"
-import _ from "lodash"
-
-import getOvercookedPolicy from "./js/load_tf_model.js";
+import $ from "jquery";
 import OvercookedTrajectoryReplay from "./js/overcooked-replay.js";
-
-import * as Overcooked from "overcooked"
-let OvercookedMDP = Overcooked.OvercookedMDP;
-let Direction = OvercookedMDP.Direction;
-let Action = OvercookedMDP.Action;
-let [NORTH, SOUTH, EAST, WEST] = Direction.CARDINAL;
-let [STAY, INTERACT] = [Direction.STAY, Action.INTERACT];
 
 // Parameters
 let PARAMS = {
     MAIN_TRIAL_TIME: 60, //seconds
     TIMESTEP_LENGTH: 150, //milliseconds
-    DELIVERY_POINTS: 20,
-    PLAYER_INDEX: 1,  // Either 0 or 1
-    MODEL_TYPE: 'ppo_bc'  // Either ppo_bc, ppo_sp, or pbt
+    DELIVERY_POINTS: 20
 };
 let trajectoryPath = "static/assets/test_traj.json";
 let trajectoryData;
@@ -61,11 +49,18 @@ let layouts = {
         "X2    1X",
         "XXXOOXXX"
     ],
-    "mdp_test": [
-	"XXPXX",
-	"O  2O",
-	"T1  T",
-	"XDPSX"
+        "mdp_test": [
+        "XXPXX",
+        "O  2O",
+        "T1  T",
+        "XDPSX"
+    ],
+    "ttt": [
+        "XXXXXXXXXXXXX",
+        "O   DTXTD   O",
+        "XX    P    XX",
+        "S   2 P 1   S",
+        "XXXXXTXTXXXXX"
     ]
 };
 
@@ -126,9 +121,9 @@ function startGameOnEnter(e) {
 }
 
 function setTrajectoryPathOnLoad(event){
-    trajectoryData = JSON.parse(event.target.result);
-    console.log("Uploaded data: ")
-    console.log(trajectoryData)
+        trajectoryData = JSON.parse(event.target.result);
+    console.log("Uploaded data: ");
+    console.log(trajectoryData);
 
 
 }
@@ -138,7 +133,7 @@ function onChange(event) {
     reader.onload = setTrajectoryPathOnLoad;
     reader.readAsText(event.target.files[0]);
     let fileName = event.target.files[0].name;
-    $("#fileInfo").html("<p>Reading trajectory info from uploaded file " + fileName +"</p>")
+    $("#fileInfo").html("<p>Reading trajectory info from uploaded file " + fileName + "</p>");
     if (game != undefined) {
         endGame();
     }

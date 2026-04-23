@@ -4,310 +4,217 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-
-    <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="../static/css/bootstrap.min.css">
-    <link rel="stylesheet" href="../static/css/instruction.css">
-
-    <title>After Game</title>
-    <link rel="Favicon" href="../static/favicon.ico" />
-
-    <!-- <script src="static/lib/jquery-min.js" type="text/javascript"> -->
     <script src="../static/js/jquery-3.6.3.js"></script>
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
-        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
-        crossorigin="anonymous"></script> -->
-    <script src="../static/js/popper.min.js"></script>
-    <script src="../static/js/bootstrap.min.js"></script>
+    <title>Final Survey / Debrief</title>
+    <style>
+        :root {
+            --ink: #1f1a17;
+            --paper: #f9f3ea;
+            --accent: #8a3f2a;
+            --line: rgba(31, 26, 23, 0.12);
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background:
+                radial-gradient(circle at top left, rgba(138, 63, 42, 0.18), transparent 24%),
+                radial-gradient(circle at bottom right, rgba(33, 82, 86, 0.14), transparent 26%),
+                linear-gradient(135deg, #f0e7d8, #faf7f1 55%, #efe5d7);
+            color: var(--ink);
+            font-family: "Georgia", "Times New Roman", serif;
+        }
+
+        .shell {
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 40px 20px 70px;
+        }
+
+        .hero,
+        .panel {
+            padding: 28px;
+            border-radius: 28px;
+            border: 1px solid var(--line);
+            background: rgba(255, 252, 247, 0.94);
+            box-shadow: 0 18px 40px rgba(54, 38, 29, 0.08);
+        }
+
+        .hero {
+            margin-bottom: 24px;
+        }
+
+        .panel {
+            margin-bottom: 18px;
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .field textarea {
+            width: 100%;
+            min-height: 110px;
+            padding: 12px 14px;
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            background: #fffdfa;
+            resize: vertical;
+        }
+
+        .scale-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .scale-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: #fffaf2;
+            font-weight: 500;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+
+        .primary-btn {
+            border: 0;
+            border-radius: 999px;
+            padding: 14px 24px;
+            background: var(--accent);
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+        }
+    </style>
 </head>
 
 <body>
-    <div class="container" id="confirmation">
-        <h2>Confirm your details</h2>
-        <br>
-        <div id="confirmation-content">
-        </div>
-        <br>
-        <div>
-            <div id="confirm-btn" style="color: #0056b3; cursor: pointer;">
-                <h3>Confirm</h3>
+    <div class="shell">
+        <section class="hero">
+            <p style="margin:0 0 8px; font-size:0.95rem; letter-spacing:0.08em; text-transform:uppercase; color:#8a3f2a; font-weight:700;">Steps 11-12</p>
+            <h1>Final Post Hoc Survey</h1>
+            <p>Record the participant's overall impressions, then use the free-response section for debrief or interview notes.</p>
+        </section>
+
+        <section class="panel">
+            <h3>Final Ratings</h3>
+            <div id="rating-questions"></div>
+        </section>
+
+        <section class="panel">
+            <h3>Debrief / Interview Notes</h3>
+            <div class="field">
+                <label for="takeaway">What strategy did the participant use to anticipate the AI?</label>
+                <textarea id="takeaway"></textarea>
             </div>
-        </div>
-        <br>
-        <div>
-            <div id="edit-btn" style="color: #0056b3; cursor: pointer;">
-                <h3>Edit</h3>
+            <div class="field">
+                <label for="surprise_patterns">What kinds of moments were consistently surprising?</label>
+                <textarea id="surprise_patterns"></textarea>
             </div>
+            <div class="field">
+                <label for="researcher_notes">Researcher notes</label>
+                <textarea id="researcher_notes"></textarea>
+            </div>
+        </section>
+
+        <div class="actions">
+            <button class="primary-btn" id="submit-final" type="button">Save Final Survey</button>
         </div>
     </div>
-    <div class="container" id="content" style="display: none;">
-        <h2>Before game questionnaire</h2>
-        <br>
-        <h4>Please make sure that you fill in true and accurate information.</h4>
-        <br>
-        <div id="form-content">
-        </div>
-        <br>
-        <div>
-            <div id="submit-btn" style="color: #0056b3; cursor: pointer;">
-                <h3>Submit</h3>
-            </div>
-        </div>
-        <br>
-        <br>
-        <br>
-    </div>
+
     <script>
-        var userInfo = JSON.parse(sessionStorage.getItem('before_game')) || {}
+        var ratingQuestions = [
+            { id: "predictability", label: "How predictable did the AI feel overall?" },
+            { id: "teamwork", label: "How strong was the sense of teamwork with the AI?" },
+            { id: "surprise", label: "How often did the AI behave in a surprising way?" },
+            { id: "probe_usefulness", label: "How useful were the frozen probes for understanding the AI?" },
+            { id: "eeg_comfort", label: "How comfortable was the EEG setup during the session?" }
+        ];
 
         $(function () {
-            getSettings();
-            showConfirmation();
-            $("#confirm-btn").click(confirm_final)
-            $("#edit-btn").click(edit)
-            $("#submit-btn").click(submit)
+            renderRatings();
+            $("#submit-final").click(submitFinal);
         });
 
-        var settings;
-
-        var name = '<div> \
-            <p>What is your name?</p> \
-            <div> \
-                <input id="name" type="text" name="name" value=""> \
-            </div> \
-            </div> \
-            <hr>'
-
-        var phone = '<div> \
-            <p>For contact maybe a phone number?</p> \
-            <div> \
-                <input id="phone" type="text" name="phone" value=""> \
-            </div> \
-            </div> \
-            <hr>'
-
-        var email = '<div> \
-            <p>For contact maybe a email?</p> \
-            <div> \
-                <input id="email" type="text" name="email" value=""> \
-            </div> \
-            </div> \
-            <hr>'
-
-        var age = '<div> \
-            <p>Your age</p> \
-            <div> \
-                <input id="age" type="number" name="age" value="" required min="16" max="99"> \
-            </div> \
-            </div> \
-            <hr>'
-
-        var id = '<div> \
-            <p>Your ID</p> \
-            <div> \
-                <input id="id" type="number" name="id" value=""> \
-            </div> \
-            </div> \
-            <hr>'
-
-        var gender = '<div> \
-            <p>Your gender</p> \
-            <div> \
-                <input type="radio" name="gender" value="male">Male<br> \
-                <input type="radio" name="gender" value="female">Female \
-            </div> \
-            </div> \
-            <hr>'
-
-        var gameskill = '<div> \
-            <p>Your skill level in cooperative games?</p> \
-            <div> \
-                <input type="radio" name="skill" value="low">Low<br> \
-                <input type="radio" name="skill" value="medium">Medium<br> \
-                <input type="radio" name="skill" value="expert">Expert \
-            </div> \
-            </div> \
-            <hr>'
-
-        var isPlayed = '<div> \
-            <p>Whether you have played the game "Overcooked!2" or not?</p> \
-            <div> \
-                <input type="radio" name="isPlayed" value="y">Yes<br> \
-                <input type="radio" name="isPlayed" value="n">No \
-            </div> \
-            </div> \
-            <hr>'
-
-        var level = '<div> \
-            <p>If yes, what level do you think you are at? (If not, you may skip this question.) </p> \
-            <div> \
-                <input type="radio" name="level" value="low">Low<br> \
-                <input type="radio" name="level" value="medium">Medium<br> \
-                <input type="radio" name="level" value="expert">Expert \
-            </div> \
-            </div> \
-            <hr>'
-
-        var setting_list = [
-            'name',
-            'phone',
-            'email',
-            'id',
-            'age',
-            'gender',
-            'gameskill',
-            'isPlayed',
-            'level',
-        ]
-        var setting_dict = {
-            'name': name,
-            'phone': phone,
-            'email': email,
-            'age': age,
-            'gender': gender,
-            'gameskill': gameskill,
-            'isPlayed': isPlayed,
-            'level': level,
-            'id': id,
+        function renderRatings() {
+            ratingQuestions.forEach(function (question) {
+                var wrapper = $('<div class="field"></div>');
+                wrapper.append("<label>" + question.label + "</label>");
+                var group = $('<div class="scale-group"></div>');
+                for (var i = 1; i <= 7; i++) {
+                    group.append('<label><input type="radio" name="' + question.id + '" value="' + i + '"> ' + i + '</label>');
+                }
+                wrapper.append(group);
+                $("#rating-questions").append(wrapper);
+            });
         }
 
-        var id_exist = {}
-
-        function getSettings() {
+        function apiPost(url, payload) {
             var xhr = new XMLHttpRequest();
-            xhr.open("POST", "/beforegame", false); // false for synchronous
-            // xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.send();
-            var response = JSON.parse(xhr.response);
-            settings = response;
-            for (let i in setting_list) {
-                let key = setting_list[i]
-                id_exist[key] = settings[key];
-                if (settings[key]) {
-                    $("#form-content").append(setting_dict[key]);
-                }
-            }
+            xhr.open("POST", url, false);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.send(JSON.stringify(payload));
+            return xhr.responseText ? JSON.parse(xhr.responseText) : {};
         }
 
-        function showConfirmation() {
-            // Show confirmation page
-            $("#content").hide();
-            $("#submit-btn").hide();
-            $("#confirmation").show();
-
-            let confirmationContent = '';
-            for (let key in userInfo) {
-                confirmationContent += `<p><strong>${key.charAt(0).toUpperCase() + key.slice(1)}:</strong> ${userInfo[key]}</p>`;
+        function submitFinal() {
+            var userInfo = JSON.parse(sessionStorage.getItem("before_game") || "{}");
+            if (!userInfo.name) {
+                window.location.href = "/html/before_game";
+                return;
             }
-            $("#confirmation-content").html(confirmationContent);
-        }
 
-        function edit() {
-            $("#confirmation").hide();
-            $("#content").show();
-            $("#submit-btn").show();
-
-            // Fill form with previous values
-            for (let key of setting_list) {
-                if (id_exist[key]) {
-                    if (key === 'gender' || key === 'gameskill' || key === 'isPlayed' || key === 'level') {
-                        $(`input[name=${key}][value=${userInfo[key]}]`).prop('checked', true);
-                    } else {
-                        $(`#${key}`).val(userInfo[key]);
-                    }
+            var ratings = {};
+            var missing = [];
+            ratingQuestions.forEach(function (question) {
+                var value = $('input[name="' + question.id + '"]:checked').val();
+                if (!value) {
+                    missing.push(question.label);
                 }
+                ratings[question.id] = value || "";
+            });
+
+            if (missing.length) {
+                alert("Please complete all rating questions.");
+                return;
             }
-        }
 
-        function confirm_final() {
-            alert("Thank you for your participation! You can now close the page.")
-        }
-
-        function submit() {
-            if (id_exist['name']) {
-                userInfo.name = $('#name').val()
-                if (userInfo.name == '') {
-                    alert('Please fill your name!')
-                    return
+            var payload = {
+                final_ratings: ratings,
+                debrief: {
+                    takeaway: $("#takeaway").val(),
+                    surprise_patterns: $("#surprise_patterns").val(),
+                    researcher_notes: $("#researcher_notes").val()
                 }
-            } else {
-                userInfo.name = Math.random().toString(36).slice(-8)
-            }
+            };
 
-            if (id_exist['phone']) {
-                userInfo.phone = $('#phone').val()
-            } else {
-                userInfo.phone = Math.random().toString(36).slice(-8)
-            }
-
-
-            if (id_exist['email']) {
-                userInfo.email = $('#email').val()
-                if (userInfo.email == '') {
-                    alert('Please fill your email address!')
-                    return
+            apiPost("/save_session_section", {
+                user_info: userInfo,
+                section_id: "final_posthoc_survey",
+                data: payload,
+                progress: {
+                    current_stage_id: "session_complete",
+                    completed_stage_ids: ["session_complete"]
                 }
-            }
+            });
 
-            if (id_exist['age']) {
-                userInfo.age = $('#age').val().toString()
-                if (userInfo.age == '') {
-                    alert('Please fill your age!')
-                    return
-                }
-            }
-
-            if (id_exist['id']) {
-                userInfo.id = $('#id').val().toString()
-                if (userInfo.id == '') {
-                    alert('Please fill your id!')
-                    return
-                }
-            }
-
-            if (id_exist['gender']) {
-                userInfo.gender = $("input[name='gender']:checked").val();
-                if (userInfo.gender == undefined) {
-                    alert('Please select your gender!')
-                    return
-                }
-            }
-
-            if (id_exist['gameskill']) {
-                userInfo.gameskill = $("input[name='skill']:checked").val();
-                if (userInfo.gameskill == undefined) {
-                    alert('Please select your game skill!')
-                    return
-                }
-            }
-
-            if (id_exist['isPlayed']) {
-                userInfo.isPlayed = $("input[name='isPlayed']:checked").val();
-                if (userInfo.isPlayed == undefined) {
-                    alert('Please select whether you have played "Overcooked!2!" or not')
-                    return
-                }
-            }
-
-            if (id_exist['level']) {
-                userInfo.level = $("input[name='level']:checked").val();
-                if (userInfo.isPlayed == 'y' && userInfo.level == undefined) {
-                    alert('Please select your level!')
-                    return
-                }
-            }
-            var xhr = new XMLHttpRequest();
-            xhr.open("POST", "/create_questionnaire_before_game", false); // false for synchronous
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            // console.log(userInfo)
-            xhr.send(JSON.stringify(userInfo));
-            var response = JSON.parse(xhr.response);
-            saveDataToSession()
-            showConfirmation()
-        }
-
-        function saveDataToSession() {
-            sessionStorage.setItem('before_game', JSON.stringify(userInfo))
+            alert("Final survey saved. The session is complete.");
         }
     </script>
 </body>

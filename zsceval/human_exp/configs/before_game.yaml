@@ -1,6 +1,99 @@
-name: True
-phone: True
-email: True
-age: True
-gender: True
-isPlayed: True
+title: Arrival / Consent / Screening
+description:
+  - Collect consent, participant background, and EEG readiness before the game starts.
+sections:
+  - id: identity
+    title: Participant Information
+    fields:
+      - id: name
+        label: Participant name or code
+        type: text
+        required: true
+      - id: phone
+        label: Contact phone
+        type: text
+        required: true
+      - id: email
+        label: Contact email
+        type: email
+        required: false
+      - id: age
+        label: Age
+        type: number
+        min: 18
+        max: 99
+        required: true
+      - id: gender
+        label: Gender
+        type: radio
+        required: true
+        options:
+          - value: female
+            label: Female
+          - value: male
+            label: Male
+          - value: nonbinary
+            label: Non-binary
+          - value: prefer_not
+            label: Prefer not to say
+  - id: background
+    title: Background
+    fields:
+      - id: handedness
+        label: Handedness
+        type: radio
+        required: true
+        options:
+          - value: right
+            label: Right-handed
+          - value: left
+            label: Left-handed
+          - value: mixed
+            label: Mixed
+      - id: game_skill
+        label: How experienced are you with cooperative games?
+        type: radio
+        required: true
+        options:
+          - value: low
+            label: Low
+          - value: medium
+            label: Medium
+          - value: high
+            label: High
+      - id: overcooked_experience
+        label: Have you played Overcooked before?
+        type: radio
+        required: true
+        options:
+          - value: "yes"
+            label: "Yes"
+          - value: "no"
+            label: "No"
+      - id: ai_experience
+        label: Have you participated in a human-AI interaction study before?
+        type: radio
+        required: true
+        options:
+          - value: "yes"
+            label: "Yes"
+          - value: "no"
+            label: "No"
+  - id: eeg_screening
+    title: EEG Screening
+    fields:
+      - id: sleep_quality
+        label: How would you rate your sleep last night?
+        type: radio
+        required: true
+        options:
+          - value: poor
+            label: Poor
+          - value: okay
+            label: Okay
+          - value: good
+            label: Good
+      - id: notes
+        label: Any additional notes for the experimenter?
+        type: textarea
+        required: false
