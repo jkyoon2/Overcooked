@@ -37,7 +37,15 @@ pip install "fastapi>=0.111.0" "uvicorn[standard]>=0.30.0" "pydantic>=2.7.0" \
     "httpx>=0.27.0" "ruff>=0.4.0" "starlette"
 ```
 
-Frontend (one-time, from repo root):
+Install `zsceval` as an editable package so `from zsceval.envs...` imports resolve (run once from repo root):
+
+```bash
+conda activate neurocontroller
+cd /path/to/neurocontroller  # repo root
+pip install -e . --no-deps
+```
+
+Frontend (one-time):
 
 ```bash
 cd zsceval/human_exp/frontend && npm install

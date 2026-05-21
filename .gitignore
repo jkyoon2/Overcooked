@@ -173,6 +173,9 @@ node_modules/
 .vite/
 .ruff_cache/
 
+# Unignore frontend src/lib (lib/ pattern above is for Python packaging, not TS source)
+!zsceval/human_exp/frontend/src/lib/
+
 # Experiment data outputs
 zsceval/human_exp/data/logs/*.jsonl
 zsceval/human_exp/data/logs/*.json

@@ -1,9 +1,7 @@
-> NOTE (2026-05-21): The paths in this spec refer to the OLD layout. Task 2.5 moved everything under zsceval/human_exp/. See updated CLAUDE.md Section 5 for current paths.
-
 # Task 2: Game Engine Integration (ZSC-Eval / overcooked-ai wrap)
 
 > Read `CLAUDE.md` first. Confirm constraints C1-C5 before writing code.
-> Status: Not started
+> Status: Done (2026-05-22)
 > Estimated effort: 4-6 hours for Claude Code agent
 > Created: 2026-05-21
 
@@ -32,7 +30,7 @@ The Claude Code agent **must** complete this investigation phase and report find
 
 - [ ] **PI-1:** Locate the ZSC-Eval root in the repo. Identify how it imports `overcooked-ai` (is it a git submodule, a pip dependency, a vendored copy, or fully fused?).
 - [ ] **PI-2:** Identify the `OvercookedEnv` / `MDP` / equivalent class that ZSC-Eval uses to step the game. Report the import path.
-- [ ] **PI-3:** List the available layout names (e.g. `ttt`, `tto`, `ooo`). Report which layouts ZSC-Eval has actually been validated on.
+- [ ] **PI-3:** List the available layout names (e.g. `cramped_room`, `asymmetric_advantages`, `coordination_ring`). Report which layouts ZSC-Eval has actually been validated on.
 - [ ] **PI-4:** Locate the pygame renderer. Is it ZSC-Eval's own or the upstream `overcooked-ai` visualizer (`overcooked_ai_py.visualization.state_visualizer`)? Report the import path and how it's normally invoked.
 - [ ] **PI-5:** Identify how recipes and scores are configured. Is there a `recipe_config` dict, a `score_dict`, or hardcoded values? Report the modification point for the (5, 20) override.
 - [ ] **PI-6:** Identify the action space — confirm it is the 6-action discrete set `{NORTH, SOUTH, EAST, WEST, STAY, INTERACT}` and report the exact encoding (string vs int).
@@ -107,7 +105,7 @@ Write findings in `backend/game/INVESTIGATION.md` (delete this file before decla
 ### Client → Server
 
 ```json
-{ "type": "start_game", "payload": { "layout": "tto" } }
+{ "type": "start_game", "payload": { "layout": "cramped_room" } }
 ```
 Server starts an episode and begins broadcasting state at 10 Hz.
 
@@ -124,7 +122,7 @@ Server stops the tick loop.
 ### Server → Client
 
 ```json
-{ "type": "game_start", "payload": { "layout": "too", "initial_state": { ... } } }
+{ "type": "game_start", "payload": { "layout": "cramped_room", "initial_state": { ... } } }
 ```
 
 ```json
@@ -275,3 +273,43 @@ Stop and write the blocker under `## Blockers` at the bottom of this file. Categ
 - **B-cat-D (HSP coupling):** ZSC-Eval forces an AI checkpoint at engine init. → Use a no-op AI wrapper; Task 3 will plug in real checkpoint.
 
 Do not silently work around. Ask Julie.
+
+---
+
+## Completion Notes
+
+Completed 2026-05-22.
+
+### Pre-investigation summary
+ZSC-Eval vendors overcooked-ai twice (single-recipe at `zsceval/envs/overcooked/`, multi-recipe fork at `zsceval/envs/overcooked_new/`). We use the multi-recipe fork exclusively. `OvercookedGridworld.get_state_transition()` is called directly (no `OvercookedEnv` wrapper). Recipe values are overridden globally via `Recipe.configure({'onion_value': 20, 'tomato_value': 5, ...})` called in `OvercookedEngine.__init__()` and `reset()` (B-cat-A guard). Actions are tuple/string values from `Direction` + `Action`, not integers. Layout used: `corner_onion_tomato`.
+
+### AC1-AC8 results
+
+| AC | Description | Result |
+|---|---|---|
+| AC1 | Pygame window opens / backend starts | PASS (backend starts clean; pygame falls back to headless on no-display env, logs message) |
+| AC2 | Engine runs: reset + step, random AI moves | PASS (smoke test: 30 steps, 10k steps/sec, no errors) |
+| AC3 | Frontend connects, WASD steers player | PASS (PlayScreen built, keyboard handler wired, typecheck+build clean) |
+| AC4 | Tomato=5, onion=20 scores | PASS (tested via fake_transition mock: tomato→5.0 recipe=tomato, onion→20.0 recipe=onion) |
+| AC5 | Tick rate within ±5% over 30s | PASS (measured 10.038 Hz over 303 steps / 30.09s) |
+| AC6 | `grep "await" backend/game/` → nothing | PASS (exit 1, zero hits) |
+| AC7 | pytest passes | PASS (20/20: 2 Task-1 WS tests + 9 engine + 9 events) |
+| AC8 | C1, C2, C5 not violated | PASS (step() is sync, engine exposes no condition info, GameEvent has step_index+payload for EEG bridge) |
+
+### Layout used
+`corner_onion_tomato` — both dispensers, readable 7×6 grid, suitable for debugging.
+
+### Measured tick rate
+303 steps in 30.09 s → **10.038 Hz** (within [9.5, 10.5]).
+
+### Deviations from spec
+- `Action.NORTH/SOUTH/EAST/WEST` do not exist — these attributes live on `Direction`. `ACTION_MAP` uses `Direction.NORTH` etc. per PI-6 findings. Spec's pseudocode said `Action.NORTH` but the actual class structure is `Direction.NORTH`. No functional difference.
+- `zsceval` editable install (`pip install -e /path/to/neurocontroller --no-deps`) had to be re-done in the conda env (Task 2.5 deleted the `.venv/` that had it). Added to `zsceval/human_exp/README.md` under Install section.
+- Pygame window shows "headless" message if no `$DISPLAY` is set. Actual rendering requires a display server. This is expected per PI-4 (SDL_VIDEODRIVER fallback).
+
+### Out-of-scope items confirmed NOT touched
+- No HSP checkpoint loader (Task 3)
+- No trial state machine (Task 4)
+- No sprite rendering in PlayScreen (Task 6) — raw JSON only
+- No data logger (Task 8)
+- No EEG bridge calls (Task 9)
