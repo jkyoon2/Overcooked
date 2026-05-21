@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI, WebSocket
 
-from api.websocket import websocket_handler
+from backend.api.websocket import websocket_handler
 
 app = FastAPI(title="Neurocontroller Backend")
 

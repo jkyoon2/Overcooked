@@ -174,9 +174,9 @@ node_modules/
 .ruff_cache/
 
 # Experiment data outputs
-data/logs/*.jsonl
-data/logs/*.json
-data/checkpoints/*.pt
+zsceval/human_exp/data/logs/*.jsonl
+zsceval/human_exp/data/logs/*.json
+zsceval/human_exp/data/checkpoints/*.pt
 
 # macOS
 .DS_Store

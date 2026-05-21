@@ -4,7 +4,7 @@ import time
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from data.schema import HelloAckMessage, HelloAckPayload, HelloMessage
+from backend.data.schema import HelloAckMessage, HelloAckPayload, HelloMessage
 
 
 async def websocket_handler(websocket: WebSocket) -> None:

@@ -1,3 +1,5 @@
+> NOTE (2026-05-21): The paths in this spec refer to the OLD layout. Task 2.5 moved everything under zsceval/human_exp/. See updated CLAUDE.md Section 5 for current paths.
+
 # Task 2: Game Engine Integration (ZSC-Eval / overcooked-ai wrap)
 
 > Read `CLAUDE.md` first. Confirm constraints C1-C5 before writing code.

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from starlette.testclient import TestClient
 
-from main import app
+from backend.main import app
 
 
 def test_health() -> None:
