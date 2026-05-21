@@ -1,7 +1,7 @@
 # Task 2.5: Repo Restructure + Environment Unification
 
 > Read the updated `CLAUDE.md` first — Section 3 (env) and Section 5 (paths) were rewritten on 2026-05-21.
-> Status: Not started
+> Status: Done (2026-05-21)
 > Estimated effort: 2-3 hours for Claude Code agent
 > Created: 2026-05-21
 > Reason: Task 1 & Task 2 placed code at the wrong path and created an unnecessary `backend/venv/`. This task fixes both before Task 3 begins.
@@ -183,3 +183,54 @@ Delete:
 - **B-cat-H (AC regression):** A Task 1 or Task 2 AC no longer passes after the move. → Document which one, the failure mode, what you tried. Do NOT silently change ACs to make them pass.
 
 Never silently work around. Ask Julie.
+
+---
+
+## Completion Notes
+
+All Phases A–E complete as of 2026-05-21.
+
+### AC Verification
+
+| AC | Description | Result |
+|---|---|---|
+| 2.5-AC1 | Layout matches CLAUDE.md Section 5 | PASS — `zsceval/human_exp/backend/`, `frontend/`, `data/` all present |
+| 2.5-AC2 | No venv/ under zsceval/human_exp/ | PASS — `find` returns nothing |
+| 2.5-AC3 | No interface code at repo root | PASS — no `backend/`, `frontend/`, `data/` at root |
+| 2.5-AC4 | All T1 ACs re-pass | PASS — see T1 table below |
+| 2.5-AC5 | All T2 ACs re-pass | PARTIAL — see T2 table below |
+| 2.5-AC6 | README setup works from scratch | PASS — conda env + pip install instructions verified |
+| 2.5-AC7 | Git history preserved | PASS — `git log --follow` shows original Task 1 commit |
+
+### Task 1 AC Re-verification
+
+| AC | Description | Result |
+|---|---|---|
+| T1-AC1 | `GET /health` → `{"status": "ok"}` | PASS (pytest test_health) |
+| T1-AC2 | WebSocket `/ws` accepts connection | PASS (pytest test_websocket_echo) |
+| T1-AC3 | Frontend builds clean | PASS (`npm run typecheck && npm run build`) |
+| T1-AC4 | `pytest` all tests pass | PASS (2/2 at new path) |
+| T1-AC5 | README setup instructions | PASS (moved to `zsceval/human_exp/README.md`) |
+| T1-AC6 | .gitignore covers node_modules, __pycache__, etc. | PASS |
+| T1-AC7 | Sync echo path (C1) | PASS — no await in game/ |
+
+### Task 2 AC Re-verification
+
+| AC | Description | Result |
+|---|---|---|
+| T2-AC1 | INVESTIGATION.md answers PI-1–PI-7 | PASS (committed, file present) |
+| T2-AC2 | Pygame window opens, two agents move | **FAIL — engine.py not yet implemented (stub)** |
+| T2-AC3 | Frontend connects, WASD steers | **FAIL — game engine not implemented** |
+| T2-AC4 | Tomato=5, onion=20 scores | **FAIL — game engine not implemented** |
+| T2-AC5 | Tick rate within ±5% over 30s | **FAIL — game engine not implemented** |
+| T2-AC6 | `grep -n "await" game/` → nothing | PASS |
+| T2-AC7 | All pytest cases pass | **FAIL — test_engine.py and test_events.py not written** |
+| T2-AC8 | C1, C2, C5 not violated | PASS (structural checks only; engine not yet running) |
+
+**T2-AC2 through T2-AC5 and T2-AC7 remain open.** Task 2 game engine implementation (engine.py, events.py, ai_loader.py, websocket.py extension, PlayScreen.tsx) was never executed — pre-investigation was done but the coding phase awaits go-ahead. See `tasks/task_2_game_engine.md`.
+
+### Deviations from spec
+
+- `data/checkpoints/.gitkeep` was NOT re-tracked at `zsceval/human_exp/data/checkpoints/` because the `.gitignore` pattern `checkpoints/` blocks it. The directory exists on disk; the pattern prevents accidental checkpoint model file commits. No functional impact.
+- Python was 3.9.23 in conda env (spec said 3.11+). No issues encountered — all code ran correctly. Surfacing for awareness.
+- `frontend/src/lib/websocket.ts` was not in the pre-restructure git index (untracked by the frontend listing in git add) — confirmed present on disk in `zsceval/human_exp/frontend/src/lib/`. Not a regression.
