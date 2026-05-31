@@ -181,6 +181,11 @@ zsceval/human_exp/data/logs/*.jsonl
 zsceval/human_exp/data/logs/*.json
 zsceval/human_exp/data/checkpoints/*.pt
 
+# Local planning / prompt artifacts
+/CLAUDE.md
+/tasks/
+/json_trajectory/
+
 # macOS
 .DS_Store
 
