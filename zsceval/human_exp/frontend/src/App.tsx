@@ -1,61 +1,321 @@
-import { useEffect, useRef, useState } from 'react'
-import { createWebSocketClient, type WebSocketClient } from './lib/websocket'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import {
+  createWebSocketClient,
+  type GameState,
+  type RatingPayload,
+  type TrialPhase,
+  type TrialStartMessage,
+  type WebSocketClient,
+} from './lib/websocket'
+import InstructionScreen from './screens/InstructionScreen'
 import PlayScreen from './screens/PlayScreen'
+import RatingScreen from './screens/RatingScreen'
 
-const WS_URL = 'ws://localhost:8000/ws'
+const DEFAULT_SESSION_ID = 'TEST_S01'
+
+type ConnectionStatus = 'disconnected' | 'connecting' | 'connected'
+type AppPhase = 'idle' | 'waiting' | TrialPhase | 'complete'
+type InstructionPayload = TrialStartMessage['payload']
 
 export default function App() {
-  const [connected, setConnected] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting')
+  const [phase, setPhase] = useState<AppPhase>('idle')
+  const [instruction, setInstruction] = useState<InstructionPayload | null>(null)
+  const [playerHat, setPlayerHat] = useState('')
+  const [aiHat, setAiHat] = useState('')
+  const [currentTrialId, setCurrentTrialId] = useState<number | null>(null)
+  const [ratingDurationMs, setRatingDurationMs] = useState(20_000)
+  const [breakDurationMs, setBreakDurationMs] = useState(5_000)
+  const [gameState, setGameState] = useState<GameState | null>(null)
+  const [gameEnded, setGameEnded] = useState(false)
+  const [deliveries, setDeliveries] = useState({ ttt: 0, tto: 0, too: 0, ooo: 0 })
   const clientRef = useRef<WebSocketClient | null>(null)
+  const connectPollRef = useRef<number | null>(null)
+  const connectTimeoutRef = useRef<number | null>(null)
+  const reconnectTimerRef = useRef<number | null>(null)
+  const sessionStartedRef = useRef(false)
 
-  const connect = () => {
+  const connect = useCallback(() => {
     if (clientRef.current) {
       clientRef.current.close()
     }
-    const client = createWebSocketClient(WS_URL)
+    if (connectPollRef.current !== null) {
+      window.clearInterval(connectPollRef.current)
+      connectPollRef.current = null
+    }
+    if (connectTimeoutRef.current !== null) {
+      window.clearTimeout(connectTimeoutRef.current)
+      connectTimeoutRef.current = null
+    }
+    if (reconnectTimerRef.current !== null) {
+      window.clearTimeout(reconnectTimerRef.current)
+      reconnectTimerRef.current = null
+    }
+
+    setConnectionStatus('connecting')
+    setPhase('idle')
+    setInstruction(null)
+    sessionStartedRef.current = false
+
+    const client = createWebSocketClient(getWebSocketUrl())
+    client.setHandlers({
+      onTrialStart: (msg) => {
+        setInstruction(msg.payload)
+        setPhase(msg.payload.phase)
+        setPlayerHat(msg.payload.player_hat)
+        setAiHat(msg.payload.ai_hat)
+        setCurrentTrialId(msg.payload.trial_id)
+      },
+      onPhaseChange: (msg) => {
+        setInstruction(null)
+        setPhase(msg.payload.phase)
+        if (msg.payload.phase === 'play') {
+          // reset game state before game_start arrives
+          setGameState(null)
+          setGameEnded(false)
+          setDeliveries({ ttt: 0, tto: 0, too: 0, ooo: 0 })
+        }
+        if (msg.payload.phase === 'rating') {
+          setRatingDurationMs(msg.payload.duration_ms)
+        }
+        if (msg.payload.phase === 'break') {
+          setBreakDurationMs(msg.payload.duration_ms)
+        }
+      },
+      onSessionComplete: () => {
+        setInstruction(null)
+        setPhase('complete')
+      },
+      onRatingAck: () => {
+        setPhase('waiting')
+      },
+      onGameStart: (msg) => {
+        setGameState(msg.payload.initial_state)
+        setGameEnded(false)
+        setDeliveries({ ttt: 0, tto: 0, too: 0, ooo: 0 })
+      },
+      onGameStep: (msg) => {
+        setGameState(msg.payload.state)
+        if (msg.payload.events.length > 0) {
+          for (const e of msg.payload.events) {
+            if (e.event_type === 'player_deliver' || e.event_type === 'ai_deliver') {
+              const recipe = String(e.payload['recipe']) as 'ttt' | 'tto' | 'too' | 'ooo'
+              if (recipe === 'ttt' || recipe === 'tto' || recipe === 'too' || recipe === 'ooo') {
+                setDeliveries((prev) => ({ ...prev, [recipe]: prev[recipe] + 1 }))
+              }
+            }
+          }
+        }
+      },
+      onGameEnd: () => {
+        setGameEnded(true)
+      },
+    })
     clientRef.current = client
 
     // Poll readyState until open (WebSocket does not expose an onopen via our wrapper)
-    const interval = setInterval(() => {
+    connectPollRef.current = window.setInterval(() => {
       if (client.isOpen()) {
-        setConnected(true)
-        clearInterval(interval)
+        setConnectionStatus('connected')
+        if (connectPollRef.current !== null) {
+          window.clearInterval(connectPollRef.current)
+          connectPollRef.current = null
+        }
+        if (connectTimeoutRef.current !== null) {
+          window.clearTimeout(connectTimeoutRef.current)
+          connectTimeoutRef.current = null
+        }
       }
     }, 50)
-  }
 
-  const disconnect = () => {
-    clientRef.current?.endGame()
-    clientRef.current?.close()
-    clientRef.current = null
-    setConnected(false)
-  }
-
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      clientRef.current?.close()
-    }
+    connectTimeoutRef.current = window.setTimeout(() => {
+      if (clientRef.current === client && !client.isOpen()) {
+        client.close()
+        clientRef.current = null
+        setConnectionStatus('disconnected')
+        if (connectPollRef.current !== null) {
+          window.clearInterval(connectPollRef.current)
+          connectPollRef.current = null
+        }
+      }
+    }, 5000)
   }, [])
 
-  if (!connected || !clientRef.current) {
+  const startSession = useCallback(() => {
+    if (!clientRef.current?.isOpen()) return
+    setPhase('waiting')
+    setInstruction(null)
+    sessionStartedRef.current = true
+    clientRef.current.startSession(DEFAULT_SESSION_ID)
+  }, [])
+
+  const handleInstructionReady = useCallback(() => {
+    clientRef.current?.sendPhaseReady()
+    setPhase('waiting')
+  }, [])
+
+  // Stable callbacks so PlayScreen effects don't re-fire on every App re-render
+  const handlePhaseReady = useCallback(() => {
+    clientRef.current?.sendPhaseReady()
+  }, [])
+
+  const handlePlayerAction = useCallback((action: string) => {
+    clientRef.current?.sendPlayerAction(action)
+  }, [])
+
+  const handleRatingSubmit = useCallback((rating: RatingPayload) => {
+    clientRef.current?.submitRating(rating)
+  }, [])
+
+  useEffect(() => {
+    connect()
+    return () => {
+      clientRef.current?.close()
+      if (connectPollRef.current !== null) {
+        window.clearInterval(connectPollRef.current)
+      }
+      if (connectTimeoutRef.current !== null) {
+        window.clearTimeout(connectTimeoutRef.current)
+      }
+      if (reconnectTimerRef.current !== null) {
+        window.clearTimeout(reconnectTimerRef.current)
+      }
+    }
+  }, [connect])
+
+  useEffect(() => {
+    if (connectionStatus !== 'disconnected') return
+
+    reconnectTimerRef.current = window.setTimeout(() => {
+      connect()
+    }, 2000)
+
+    return () => {
+      if (reconnectTimerRef.current !== null) {
+        window.clearTimeout(reconnectTimerRef.current)
+        reconnectTimerRef.current = null
+      }
+    }
+  }, [connectionStatus, connect])
+
+  useEffect(() => {
+    if (
+      connectionStatus === 'connected'
+      && phase === 'idle'
+      && !sessionStartedRef.current
+      && clientRef.current?.isOpen()
+    ) {
+      startSession()
+    }
+  }, [connectionStatus, phase, startSession])
+
+  useEffect(() => {
+    if (phase !== 'break') return
+    const timer = window.setTimeout(() => {
+      clientRef.current?.sendPhaseReady()
+      setPhase('waiting')
+    }, breakDurationMs)
+    return () => window.clearTimeout(timer)
+  }, [phase, breakDurationMs])
+
+  if (connectionStatus !== 'connected' || !clientRef.current) {
     return (
-      <div style={{ fontFamily: 'monospace', padding: '2rem' }}>
+      <div style={pageStyle}>
         <h1>Neurocontroller</h1>
-        <p>WebSocket: <strong>disconnected</strong></p>
-        <button onClick={connect}>Connect</button>
+        <p>
+          {connectionStatus === 'connecting'
+            ? 'Connecting to the experiment server...'
+            : 'Connection lost. Retrying automatically...'}
+        </p>
       </div>
     )
   }
 
+  if (phase === 'instruction' && instruction) {
+    return (
+      <InstructionScreen
+        trialId={instruction.trial_id}
+        playerHat={instruction.player_hat}
+        aiHat={instruction.ai_hat}
+        durationMs={instruction.duration_ms}
+        onReady={handleInstructionReady}
+      />
+    )
+  }
+
+  if (phase === 'rating' && currentTrialId !== null) {
+    return (
+      <RatingScreen
+        trialId={currentTrialId}
+        durationMs={ratingDurationMs}
+        onSubmit={handleRatingSubmit}
+      />
+    )
+  }
+
   return (
-    <div style={{ fontFamily: 'monospace', padding: '0.5rem' }}>
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-        <strong>Neurocontroller</strong>
-        <span style={{ color: 'green' }}>● connected</span>
-        <button onClick={disconnect}>Disconnect</button>
-      </div>
-      <PlayScreen client={clientRef.current} layout="corner_onion_tomato" />
+    <div style={{ minHeight: '100vh', fontFamily: 'system-ui, sans-serif', background: '#f8fafc' }}>
+      <header
+        style={{
+          display: 'flex',
+          gap: '1rem',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '1rem 1.25rem',
+          borderBottom: '1px solid #d7dde8',
+          background: '#ffffff',
+        }}
+      >
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', minWidth: 0 }}>
+          <strong>Neurocontroller</strong>
+          <span style={{ color: '#15803d' }}>connected</span>
+          <span style={{ color: '#64748b' }}>phase: {phase}</span>
+        </div>
+      </header>
+
+      <main style={pageStyle}>
+        {phase === 'idle' && (
+          <>
+            <h1>Session</h1>
+            <p>Starting session...</p>
+          </>
+        )}
+
+        {phase === 'waiting' && <p>Waiting for the next phase...</p>}
+        {phase === 'play' && (
+          <PlayScreen
+            gameState={gameState}
+            score={gameState?.score ?? 0}
+            timeRemainingMs={gameState !== null ? gameState.time_remaining * 100 : Infinity}
+            playerHat={playerHat}
+            aiHat={aiHat}
+            gameEnded={gameEnded}
+            deliveries={deliveries}
+            onPhaseReady={handlePhaseReady}
+            onPlayerAction={handlePlayerAction}
+          />
+        )}
+        {phase === 'rating' && <p>Preparing rating screen...</p>}
+        {phase === 'break' && <p>Break phase ready.</p>}
+        {phase === 'complete' && <p>Session complete.</p>}
+      </main>
     </div>
   )
 }
+
+function getWebSocketUrl(): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${window.location.hostname}:8000/ws`
+}
+
+const pageStyle = {
+  display: 'flex',
+  minHeight: 'calc(100vh - 4.5rem)',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  justifyContent: 'center',
+  gap: '1rem',
+  padding: '2rem',
+  fontFamily: 'system-ui, sans-serif',
+  color: '#111827',
+} satisfies CSSProperties

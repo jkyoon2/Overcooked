@@ -43,7 +43,7 @@ def _make_fake_infos(
 
 
 def test_pickup_event_emitted_on_holding_change() -> None:
-    """Picking up an onion fires a player_pickup event with item=onion."""
+    """Agent 0 (human) picking up an onion fires a player_pickup event."""
     infos = _make_fake_infos(pickup_agent=0, pickup_item="onion")
     new_state = MagicMock()
     new_state.objects = {}
@@ -57,7 +57,7 @@ def test_pickup_event_emitted_on_holding_change() -> None:
 
 
 def test_ai_pickup_event_emitted() -> None:
-    """Agent 1 picking up a tomato fires an ai_pickup event."""
+    """Agent 1 (AI) picking up a tomato fires an ai_pickup event."""
     infos = _make_fake_infos(pickup_agent=1, pickup_item="tomato")
     new_state = MagicMock()
     new_state.objects = {}
@@ -70,7 +70,7 @@ def test_ai_pickup_event_emitted() -> None:
 
 
 def test_player_deliver_event_emitted() -> None:
-    """Reward for agent 0 → player_deliver event with correct recipe."""
+    """Reward for agent 0 (human) → player_deliver with recipe ttt."""
     infos = _make_fake_infos(delivery_agent=0, delivery_reward=5.0)
     new_state = MagicMock()
     new_state.objects = {}
@@ -79,12 +79,12 @@ def test_player_deliver_event_emitted() -> None:
 
     deliver = [e for e in events if e.event_type == "player_deliver"]
     assert len(deliver) == 1
-    assert deliver[0].payload["recipe"] == "tomato"
+    assert deliver[0].payload["recipe"] == "ttt"
     assert deliver[0].payload["reward"] == 5.0
 
 
 def test_ai_deliver_event_emitted() -> None:
-    """Reward for agent 1 → ai_deliver event."""
+    """Reward for agent 1 (AI) → ai_deliver with recipe ooo."""
     infos = _make_fake_infos(delivery_agent=1, delivery_reward=20.0)
     new_state = MagicMock()
     new_state.objects = {}
@@ -93,7 +93,7 @@ def test_ai_deliver_event_emitted() -> None:
 
     deliver = [e for e in events if e.event_type == "ai_deliver"]
     assert len(deliver) == 1
-    assert deliver[0].payload["recipe"] == "onion"
+    assert deliver[0].payload["recipe"] == "ooo"
     assert deliver[0].payload["reward"] == 20.0
 
 
@@ -161,7 +161,7 @@ def test_game_events_have_correct_structure() -> None:
 
 
 def test_engine_emits_pickup_during_real_step() -> None:
-    """Integration: a real game step with a real pickup action emits a pickup event when held object changes."""
+    """Integration: agent 0 (AI) pickup fires ai_pickup event."""
     engine = OvercookedEngine(layout_name=LAYOUT, seed=0)
     engine.reset()
 
@@ -175,7 +175,7 @@ def test_engine_emits_pickup_during_real_step() -> None:
         return new_state, infos
 
     with patch.object(engine.mdp, "get_state_transition", side_effect=fake_transition):
-        result = engine.step((ACTION_MAP["INTERACT"], ACTION_MAP["STAY"]))
+        result = engine.step((ACTION_MAP["STAY"], ACTION_MAP["STAY"]))
 
     pickup_events = [e for e in result.events if e.event_type == "player_pickup"]
     assert len(pickup_events) == 1

@@ -7,13 +7,13 @@ import {
     OBJECTS_IMAGE_URL,
     TERRAIN_ATLAS,
     TERRAIN_IMAGE_URL,
-    getFrame,
     hatColorForPlayer,
     heldObjectSuffix,
     objectFrameName,
     orientationToFrame,
     terrainSymbolToFrame,
 } from "./atlas";
+import { atlasStyle } from "../utils.js";
 
 const DEFAULT_TILE_SIZE = 76;
 
@@ -65,26 +65,6 @@ function terrainAt(layoutGrid, position) {
     return layoutGrid[y][x] || " ";
 }
 
-function atlasStyle(atlas, imageUrl, frameName, size) {
-    const frame = getFrame(atlas, frameName);
-    if (!frame) {
-        return {
-            width: size,
-            height: size,
-        };
-    }
-    const frameDef = frame.frame;
-    const scale = size / frameDef.w;
-    return {
-        width: size,
-        height: size,
-        backgroundImage: 'url("' + imageUrl + '")',
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "-" + String(frameDef.x * scale) + "px -" + String(frameDef.y * scale) + "px",
-        backgroundSize: String(atlas.meta.size.w * scale) + "px " + String(atlas.meta.size.h * scale) + "px",
-        imageRendering: "pixelated",
-    };
-}
 
 function SpriteFrame(props) {
     const style = atlasStyle(props.atlas, props.imageUrl, props.frameName, props.size);

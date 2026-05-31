@@ -1,11 +1,12 @@
 import OvercookedBoardRenderer from "./board-renderer";
+import { REPLAY_TIMESTEP_MS } from "../constants.js";
 
 export default class OvercookedTrajectoryReplay {
     constructor({
         container_id,
         trajectory,
         start_grid,
-        TIMESTEP = 180,
+        TIMESTEP = REPLAY_TIMESTEP_MS,
         cook_time = 20,
         init_orders = null,
         focus_step = null,

@@ -1,41 +1,13 @@
 import $ from "jquery";
 
+import { TERRAIN_SYMBOL_MAP, DEFAULT_TERRAIN } from "../constants.js";
+
 function terrainClass(symbol) {
-    switch (symbol) {
-        case "X":
-            return "counter";
-        case "O":
-            return "onion";
-        case "T":
-            return "tomato";
-        case "D":
-            return "dish";
-        case "P":
-            return "pot";
-        case "S":
-            return "serve";
-        default:
-            return "floor";
-    }
+    return (TERRAIN_SYMBOL_MAP[symbol] || DEFAULT_TERRAIN).cssClass;
 }
 
 function terrainLabel(symbol) {
-    switch (symbol) {
-        case "O":
-            return "Onion";
-        case "T":
-            return "Tomato";
-        case "D":
-            return "Dish";
-        case "P":
-            return "Pot";
-        case "S":
-            return "Serve";
-        case "X":
-            return "Counter";
-        default:
-            return "";
-    }
+    return (TERRAIN_SYMBOL_MAP[symbol] || DEFAULT_TERRAIN).label;
 }
 
 function orientationLabel(orientation) {

@@ -101,10 +101,25 @@ ACTION_INDEX_TO_VALUE = {
 }
 DEFAULT_ACTION_IDX = 4
 
+FLASK_PORT = 8088
+
+CHECKPOINT_ROOT_SUBPATH = Path("results") / "Overcooked" / SESSION_LAYOUT / "shared" / "adaptive" / "hsp-S2-s12"
+CHECKPOINT_POLICY_CONFIG_SUBPATH = Path("zsceval") / "scripts" / "policy_pool" / SESSION_LAYOUT / "policy_config" / "rnn_policy_config.pkl"
+CHECKPOINT_SEEDS = range(1, 6)
+CHECKPOINT_STEPS = (49040000, 50000000)
+
+TRIAL_MAX_TIME_TUTORIAL_SOLO = 50
+TRIAL_MAX_TIME_TUTORIAL_TEAM = 55
+TRIAL_MAX_TIME_PRACTICE = 40
+TRIAL_MAX_TIME_OBSERVE = 45
+TRIAL_MAX_TIME_COLLABORATE = 60
+
+DELIVERY_REWARD = 20
+
 
 def get_args() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--port", type=int, default=int(os.getenv("FLASK_PORT", 8088)), help="port to run flask")
+    parser.add_argument("--port", type=int, default=int(os.getenv("FLASK_PORT", FLASK_PORT)), help="port to run flask")
     parser.add_argument("--ip", type=str, default=os.getenv("FLASK_HOST", "localhost"), help="bind host")
     parser.add_argument(
         "--access_ip",
@@ -213,13 +228,11 @@ def store_participant_record(user_id: str, record: Dict[str, Any]):
 
 
 def build_checkpoint_specs() -> List[Dict[str, Any]]:
-    checkpoint_root = REPO_ROOT / "results" / "Overcooked" / SESSION_LAYOUT / "shared" / "adaptive" / "hsp-S2-s12"
-    actual_policy_config = (
-        REPO_ROOT / "zsceval" / "scripts" / "policy_pool" / SESSION_LAYOUT / "policy_config" / "rnn_policy_config.pkl"
-    )
+    checkpoint_root = REPO_ROOT / CHECKPOINT_ROOT_SUBPATH
+    actual_policy_config = REPO_ROOT / CHECKPOINT_POLICY_CONFIG_SUBPATH
     specs = []
-    for seed in range(1, 6):
-        for step in (49040000, 50000000):
+    for seed in CHECKPOINT_SEEDS:
+        for step in CHECKPOINT_STEPS:
             specs.append(
                 {
                     "id": f"seed{seed}_step{step}",
@@ -343,18 +356,19 @@ def build_session_config() -> Dict[str, Any]:
         "collaborate",
         "Solo Practice",
         checkpoint_id=None,
-        max_time=50,
+        max_time=TRIAL_MAX_TIME_TUTORIAL_SOLO,
         probe_count=0,
         instruction="Warm up by cooking alone first. Practice collecting ingredients, filling the pot, plating the soup, and serving it without AI help.",
         ai_player_indices=[],
     )
+    tutorial_solo["post_trial_questions"] = []
     tutorial_team = make_trial_spec(
         "tutorial_team",
         "tutorial",
         "collaborate",
         "Practice With AI Chef",
         checkpoint_id=checkpoint_ids[0],
-        max_time=55,
+        max_time=TRIAL_MAX_TIME_TUTORIAL_TEAM,
         probe_count=1,
         instruction="Now cook with the AI chef. One practice probe will appear so you can try the expectation workflow before the main session.",
     )
@@ -365,23 +379,11 @@ def build_session_config() -> Dict[str, Any]:
             "collaborate",
             "Practice Trial",
             checkpoint_id=checkpoint_ids[1],
-            max_time=40,
+            max_time=TRIAL_MAX_TIME_PRACTICE,
             practice=True,
             probe_count=1,
             instruction="This is the last short practice before the main session. One probe will appear during the trial.",
         ),
-    ]
-    observe_trials = [
-        make_trial_spec(
-            f"observe_{i + 1}",
-            "main_observe",
-            "observe",
-            f"Observe Trial {i + 1}",
-            checkpoint_id=checkpoint_ids[2 + i],
-            max_time=45,
-            probe_count=3,
-        )
-        for i in range(3)
     ]
     collaborate_trials = [
         make_trial_spec(
@@ -390,7 +392,7 @@ def build_session_config() -> Dict[str, Any]:
             "collaborate",
             f"Collaborate Trial {i + 1}",
             checkpoint_id=checkpoint_ids[5 + i],
-            max_time=60,
+            max_time=TRIAL_MAX_TIME_COLLABORATE,
             probe_count=3,
         )
         for i in range(3)
@@ -409,7 +411,7 @@ def build_session_config() -> Dict[str, Any]:
         for i in range(3)
     ]
 
-    trials = [tutorial_solo, tutorial_team] + practice_trials + observe_trials + collaborate_trials + replay_trials
+    trials = [tutorial_solo, tutorial_team] + practice_trials + collaborate_trials + replay_trials
     trial_map = {trial["id"]: trial for trial in trials}
 
     return {
@@ -447,7 +449,7 @@ def build_session_config() -> Dict[str, Any]:
             {
                 "id": "mode_overview",
                 "type": "mode_overview",
-                "title": "Session Flow",
+                "title": "How This Session Works",
                 "duration": "2-3 min",
                 "body": [
                     "Review the two task modes before the session starts.",
@@ -482,15 +484,6 @@ def build_session_config() -> Dict[str, Any]:
                 "trial_ids": [tutorial_solo["id"], tutorial_team["id"]],
             },
             {
-                "id": "setup_baseline",
-                "type": "static",
-                "title": "EEG Setup",
-                "duration": "10-20 min",
-                "body": [
-                    "The researcher will fit the EEG cap, check signal quality, and record a short baseline before the main session starts.",
-                ],
-            },
-            {
                 "id": "practice_block",
                 "type": "trial_block",
                 "title": "Practice",
@@ -499,51 +492,6 @@ def build_session_config() -> Dict[str, Any]:
                     "Try one short practice trial with one probe before the main session begins.",
                 ],
                 "trial_ids": [trial["id"] for trial in practice_trials],
-            },
-            {
-                "id": "main_observe",
-                "type": "trial_block",
-                "title": "Main Block 1: Observe",
-                "duration": "10-15 min",
-                "body": [
-                    "Watch the highlighted AI chef and answer the probes during the trial.",
-                ],
-                "trial_ids": [trial["id"] for trial in observe_trials],
-            },
-            {
-                "id": "observe_recovery",
-                "type": "survey",
-                "title": "Short Survey + Break",
-                "duration": "3-5 min",
-                "questions": [
-                    {
-                        "id": "mental_demand",
-                        "label": "Mental demand",
-                        "type": "scale_bar",
-                        "min": 1,
-                        "max": 7,
-                        "left_label": "Low",
-                        "right_label": "High",
-                    },
-                    {
-                        "id": "effort",
-                        "label": "Effort",
-                        "type": "scale_bar",
-                        "min": 1,
-                        "max": 7,
-                        "left_label": "Low",
-                        "right_label": "High",
-                    },
-                    {
-                        "id": "attentiveness",
-                        "label": "Attentiveness",
-                        "type": "scale_bar",
-                        "min": 1,
-                        "max": 7,
-                        "left_label": "Low",
-                        "right_label": "High",
-                    },
-                ],
             },
             {
                 "id": "main_collaborate",
@@ -992,18 +940,6 @@ def root():
     return app.send_static_file("index_1.html")
 
 
-@app.route("/html/<page>")
-def return_html(page):
-    return app.send_static_file(f"{page}.html")
-
-
-@app.route("/beforegame", methods=["POST"])
-def beforegame():
-    config_path = APP_ROOT.parent / "configs" / "before_game.yaml"
-    with open(config_path, encoding="utf-8") as handle:
-        return normalize_intake_form(yaml.load(handle, Loader=yaml.FullLoader))
-
-
 @app.route("/statement", methods=["POST"])
 def statement():
     statement_path = APP_ROOT.parent / "configs" / "statement.md"
@@ -1114,28 +1050,6 @@ def start_trial():
             "environment_backend": "overcooked_new",
         }
     )
-
-
-@app.route("/predict", methods=["POST"])
-def predict():
-    data_json = json.loads(request.data)
-    user_id = make_user_id(data_json["user_info"])
-    trial_id = data_json["trial_id"]
-    pos = int(data_json["npc_index"])
-
-    if trial_id not in TRIAL_SPECS:
-        return jsonify({"status": False, "error": f"Unknown trial_id: {trial_id}"}), 404
-
-    spec = TRIAL_SPECS[trial_id]
-    if spec["mode"] == "replay":
-        return jsonify({"status": False, "error": f"Replay trial {trial_id} has no AI actions"}), 400
-
-    runtime = ensure_trial_runtime(user_id, trial_id)
-    if pos not in runtime["ai_agents"]:
-        return jsonify({"status": False, "error": f"No initialized AI for slot {pos} in trial {trial_id}"}), 400
-
-    action = get_action(runtime["state"], runtime["ai_agents"][pos], pos)
-    return jsonify({"status": True, "action": action, "environment_backend": "overcooked_new"})
 
 
 @app.route("/step_trial", methods=["POST"])

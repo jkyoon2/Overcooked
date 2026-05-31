@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ---------------------------------------------------------------------------
@@ -87,3 +87,84 @@ class PlayerActionMessage(BaseModel):
 class EndGameMessage(BaseModel):
     type: Literal["end_game"]
     payload: Dict[str, Any] = {}
+
+
+# ---------------------------------------------------------------------------
+# Task 4: trial lifecycle protocol
+# ---------------------------------------------------------------------------
+
+
+IntentAlignment = Literal[
+    "yes_clearly",
+    "yes_somewhat",
+    "no_somewhat",
+    "no_clearly",
+]
+TrialPhaseName = Literal["instruction", "play", "rating", "break"]
+
+
+class StartSessionPayload(BaseModel):
+    session_id: str
+
+
+class StartSessionMessage(BaseModel):
+    type: Literal["start_session"]
+    payload: StartSessionPayload
+
+
+class PhaseReadyMessage(BaseModel):
+    type: Literal["phase_ready"]
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SubmitRatingPayload(BaseModel):
+    quality: int
+    intent_alignment: IntentAlignment
+
+
+class SubmitRatingMessage(BaseModel):
+    type: Literal["submit_rating"]
+    payload: SubmitRatingPayload
+
+
+class TrialStartPayload(BaseModel):
+    trial_id: int
+    phase: Literal["instruction"]
+    duration_ms: int
+    player_hat: str
+    ai_hat: str
+
+
+class TrialStartMessage(BaseModel):
+    type: Literal["trial_start"]
+    payload: TrialStartPayload
+
+
+class PhaseChangePayload(BaseModel):
+    phase: TrialPhaseName
+    duration_ms: int
+
+
+class PhaseChangeMessage(BaseModel):
+    type: Literal["phase_change"]
+    payload: PhaseChangePayload
+
+
+class RatingAckPayload(BaseModel):
+    trial_id: int
+    excluded: bool
+    exclusion_reason: Optional[str] = None
+
+
+class RatingAckMessage(BaseModel):
+    type: Literal["rating_ack"]
+    payload: RatingAckPayload
+
+
+class SessionCompletePayload(BaseModel):
+    session_id: str
+
+
+class SessionCompleteMessage(BaseModel):
+    type: Literal["session_complete"]
+    payload: SessionCompletePayload

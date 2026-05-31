@@ -1,8 +1,8 @@
 import $ from "jquery";
 
 import OvercookedBoardRenderer from "./board-renderer";
+import { TIMESTEP_MS, DEFAULT_ACTION_IDX, DIRECTION_KEY_CODES, INTERACT_KEY_CODES } from "../constants.js";
 
-const DEFAULT_ACTION_IDX = 4;
 
 function actionLabel(actionIdx, actionOptions) {
     for (let i = 0; i < actionOptions.length; i += 1) {
@@ -29,7 +29,7 @@ export default class OvercookedSessionTask {
         trial,
         start_payload,
         action_options,
-        TIMESTEP = 200,
+        TIMESTEP = TIMESTEP_MS,
         completion_callback = () => { },
         probe_request_callback = () => { },
         probe_result_callback = () => { }
@@ -187,24 +187,12 @@ export default class OvercookedSessionTask {
         this.disable_response_listener();
         $(document).on("keydown.overcooked-human", (e) => {
             let actionIdx = null;
-            switch (e.which) {
-                case 37:
-                    actionIdx = 3;
-                    break;
-                case 38:
-                    actionIdx = 0;
-                    break;
-                case 39:
-                    actionIdx = 2;
-                    break;
-                case 40:
-                    actionIdx = 1;
-                    break;
-                case 32:
-                    actionIdx = 5;
-                    break;
-                default:
-                    return;
+            if (DIRECTION_KEY_CODES[e.which] !== undefined) {
+                actionIdx = DIRECTION_KEY_CODES[e.which];
+            } else if (INTERACT_KEY_CODES[e.which]) {
+                actionIdx = 5;
+            } else {
+                return;
             }
             e.preventDefault();
             this.pendingHumanActionIdx = actionIdx;

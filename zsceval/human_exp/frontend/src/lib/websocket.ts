@@ -69,7 +69,58 @@ export type GameEndMessage = {
   payload: { step_index: number; final_score: number }
 }
 
-export type ServerMessage = HelloAckMessage | GameStartMessage | GameStepMessage | GameEndMessage
+export type IntentAlignment =
+  | 'yes_clearly'
+  | 'yes_somewhat'
+  | 'no_somewhat'
+  | 'no_clearly'
+
+export type RatingPayload = {
+  quality: number
+  intent_alignment: IntentAlignment
+}
+
+export type TrialPhase = 'instruction' | 'play' | 'rating' | 'break'
+
+export type TrialStartMessage = {
+  type: 'trial_start'
+  payload: {
+    trial_id: number
+    phase: 'instruction'
+    duration_ms: number
+    player_hat: string
+    ai_hat: string
+  }
+}
+
+export type PhaseChangeMessage = {
+  type: 'phase_change'
+  payload: { phase: TrialPhase; duration_ms: number }
+}
+
+export type RatingAckMessage = {
+  type: 'rating_ack'
+  payload: {
+    trial_id: number
+    excluded: boolean
+    exclusion_reason: string | null
+  }
+}
+
+export type SessionCompleteMessage = {
+  type: 'session_complete'
+  payload: { session_id: string }
+}
+
+export type ServerMessage =
+  | HelloAckMessage
+  | GameStartMessage
+  | GameStepMessage
+  | GameEndMessage
+  | TrialStartMessage
+  | PhaseChangeMessage
+  | RatingAckMessage
+  | SessionCompleteMessage
 
 // ---------------------------------------------------------------------------
 // Client
@@ -80,12 +131,19 @@ export type GameMessageHandlers = {
   onGameStart?: (msg: GameStartMessage) => void
   onGameStep?: (msg: GameStepMessage) => void
   onGameEnd?: (msg: GameEndMessage) => void
+  onTrialStart?: (msg: TrialStartMessage) => void
+  onPhaseChange?: (msg: PhaseChangeMessage) => void
+  onRatingAck?: (msg: RatingAckMessage) => void
+  onSessionComplete?: (msg: SessionCompleteMessage) => void
 }
 
 export type WebSocketClient = {
   sendRaw: (data: string) => void
   sendJson: (obj: unknown) => void
   startGame: (layout: string) => void
+  startSession: (sessionId: string) => void
+  sendPhaseReady: () => void
+  submitRating: (rating: RatingPayload) => void
   sendPlayerAction: (action: string) => void
   endGame: () => void
   setHandlers: (handlers: GameMessageHandlers) => void
@@ -118,6 +176,18 @@ export function createWebSocketClient(url: string): WebSocketClient {
       case 'game_end':
         handlers.onGameEnd?.(msg)
         break
+      case 'trial_start':
+        handlers.onTrialStart?.(msg)
+        break
+      case 'phase_change':
+        handlers.onPhaseChange?.(msg)
+        break
+      case 'rating_ack':
+        handlers.onRatingAck?.(msg)
+        break
+      case 'session_complete':
+        handlers.onSessionComplete?.(msg)
+        break
     }
   }
 
@@ -126,6 +196,12 @@ export function createWebSocketClient(url: string): WebSocketClient {
     sendJson: (obj) => socket.send(JSON.stringify(obj)),
     startGame: (layout) =>
       socket.send(JSON.stringify({ type: 'start_game', payload: { layout } })),
+    startSession: (sessionId) =>
+      socket.send(JSON.stringify({ type: 'start_session', payload: { session_id: sessionId } })),
+    sendPhaseReady: () =>
+      socket.send(JSON.stringify({ type: 'phase_ready', payload: {} })),
+    submitRating: (rating) =>
+      socket.send(JSON.stringify({ type: 'submit_rating', payload: rating })),
     sendPlayerAction: (action) =>
       socket.send(JSON.stringify({ type: 'player_action', payload: { action } })),
     endGame: () => socket.send(JSON.stringify({ type: 'end_game', payload: {} })),

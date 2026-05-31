@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -48,17 +49,18 @@ AUTO_OLD_DYNAMICS_LAYOUTS = {
 
 @dataclass(frozen=True)
 class AgentSpec:
-    seed: int
+    seed: Optional[int]
     policy_type: str
     role: Optional[str]
     step: Optional[int]
+    actor_path: Optional[Path] = None
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = get_config()
     parser = get_overcooked_args(parser)
 
-    parser.add_argument("--policy_seed", type=int, required=True, help="Seed number for all loaded policies.")
+    parser.add_argument("--policy_seed", type=int, default=None, help="Seed number for all loaded policies.")
     parser.add_argument(
         "--policy_type",
         type=str,
@@ -80,7 +82,17 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Role subdir for separated player 1 checkpoints.",
     )
-    parser.add_argument("--checkpoint", type=int, required=True, help="Checkpoint number to load.")
+    parser.add_argument("--checkpoint", type=int, default=None, help="Checkpoint number to load.")
+    parser.add_argument(
+        "--checkpoint_path",
+        type=str,
+        nargs="+",
+        default=None,
+        help=(
+            "Actor checkpoint path(s) to load directly. Provide one path to broadcast to every "
+            "agent, or one path per agent."
+        ),
+    )
     parser.add_argument(
         "--stochastic",
         action="store_true",
@@ -98,6 +110,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         help="Root directory where checkpoints are loaded from.",
+    )
+    parser.add_argument(
+        "--output_path",
+        type=str,
+        default=None,
+        help="Optional JSON output path. Defaults to json_trajectory/<layout>_<seed>_<checkpoint>.json.",
     )
     parser.add_argument("--device", type=str, choices=["cpu", "cuda"], default="cpu")
     return parser
@@ -141,7 +159,17 @@ def main() -> None:
     with output_path.open("w", encoding="utf-8") as f:
         json.dump(trajectory_json, f, indent=2)
 
+    final_score = final_score_from_trajectory(trajectory_json)
     logger.info("Saved realtime JSON trajectory to {}", output_path)
+    logger.info("Final score: {}", final_score)
+    print(f"FINAL_SCORE={final_score}")
+
+
+def final_score_from_trajectory(trajectory_json: Dict[str, Any]) -> int:
+    dynamic_states = trajectory_json.get("dynamicState", [])
+    if not dynamic_states:
+        return 0
+    return int(dynamic_states[-1].get("score", 0))
 
 
 def apply_dynamics_defaults(args) -> None:
@@ -206,8 +234,15 @@ def infer_checkpoint_input_channels(args, spec: AgentSpec, agent_id: int) -> int
 
 
 def resolve_actor_checkpoint_path(args, spec: AgentSpec, agent_id: int) -> Path:
+    if spec.actor_path is not None:
+        return spec.actor_path
+
     share_policy = spec.policy_type == "shared"
     ckpt_role = None if share_policy else spec.role
+    if spec.seed is None:
+        raise ValueError("--policy_seed is required when --checkpoint_path is not provided.")
+    if spec.step is None:
+        raise ValueError("--checkpoint is required when --checkpoint_path is not provided.")
     models_dir = policy_loader.build_models_dir(
         layout=args.layout_name,
         algo=args.algorithm_name,
@@ -232,23 +267,33 @@ def resolve_actor_checkpoint_path(args, spec: AgentSpec, agent_id: int) -> Path:
 
 
 def validate_args(args) -> None:
+    has_direct_paths = bool(args.checkpoint_path)
+    if not has_direct_paths:
+        if args.policy_seed is None:
+            raise ValueError("--policy_seed is required unless --checkpoint_path is provided.")
+        if args.checkpoint is None:
+            raise ValueError("--checkpoint is required unless --checkpoint_path is provided.")
+
     if args.policy_type == "separated":
         if int(args.num_agents) != 2:
             raise ValueError("--policy_type=separated is currently supported only for --num_agents=2.")
-        if args.ego_role is None or args.partner_role is None:
+        if not has_direct_paths and (args.ego_role is None or args.partner_role is None):
             raise ValueError("--ego_role and --partner_role are required when --policy_type=separated.")
 
 
 def build_agent_specs(args, num_agents: int) -> List[AgentSpec]:
+    direct_actor_paths = resolve_direct_actor_paths(args.checkpoint_path, num_agents=num_agents)
+
     if args.policy_type == "shared":
         return [
             AgentSpec(
                 seed=args.policy_seed,
                 policy_type=args.policy_type,
                 role=None,
-                step=args.checkpoint,
+                step=resolve_spec_step(args, direct_actor_paths[agent_id] if direct_actor_paths else None),
+                actor_path=direct_actor_paths[agent_id] if direct_actor_paths else None,
             )
-            for _ in range(num_agents)
+            for agent_id in range(num_agents)
         ]
 
     return [
@@ -256,22 +301,71 @@ def build_agent_specs(args, num_agents: int) -> List[AgentSpec]:
             seed=args.policy_seed,
             policy_type=args.policy_type,
             role=args.ego_role,
-            step=args.checkpoint,
+            step=resolve_spec_step(args, direct_actor_paths[0] if direct_actor_paths else None),
+            actor_path=direct_actor_paths[0] if direct_actor_paths else None,
         ),
         AgentSpec(
             seed=args.policy_seed,
             policy_type=args.policy_type,
             role=args.partner_role,
-            step=args.checkpoint,
+            step=resolve_spec_step(args, direct_actor_paths[1] if direct_actor_paths else None),
+            actor_path=direct_actor_paths[1] if direct_actor_paths else None,
         ),
     ]
 
 
 def resolve_output_path(args) -> Path:
+    if args.output_path:
+        return Path(args.output_path).expanduser()
+
     repo_root = Path(__file__).resolve().parents[3]
     output_dir = repo_root / "json_trajectory"
-    file_name = f"{args.layout_name}_{args.policy_seed}_{args.checkpoint}.json"
+    seed_label = args.policy_seed if args.policy_seed is not None else "custom"
+    checkpoint_label = args.checkpoint
+    if checkpoint_label is None and args.checkpoint_path:
+        checkpoint_label = infer_checkpoint_step(Path(args.checkpoint_path[0]).expanduser())
+    if checkpoint_label is None:
+        checkpoint_label = "custom"
+    file_name = f"{args.layout_name}_{seed_label}_{checkpoint_label}.json"
     return output_dir / file_name
+
+
+def resolve_direct_actor_paths(checkpoint_paths: Optional[Sequence[str]], num_agents: int) -> Optional[List[Path]]:
+    if not checkpoint_paths:
+        return None
+
+    paths = [Path(path).expanduser() for path in checkpoint_paths]
+    if len(paths) == 1:
+        paths = paths * num_agents
+    elif len(paths) != num_agents:
+        raise ValueError(
+            f"--checkpoint_path expects either 1 path or {num_agents} paths, got {len(paths)}."
+        )
+
+    missing = [path for path in paths if not path.exists()]
+    if missing:
+        missing_text = ", ".join(str(path) for path in missing)
+        raise FileNotFoundError(f"Checkpoint path(s) not found: {missing_text}")
+
+    return paths
+
+
+def resolve_spec_step(args, actor_path: Optional[Path]) -> Optional[int]:
+    if args.checkpoint is not None:
+        return int(args.checkpoint)
+    if actor_path is not None:
+        return infer_checkpoint_step(actor_path)
+    return None
+
+
+def infer_checkpoint_step(path: Path) -> Optional[int]:
+    match = re.search(r"(?:^|_)periodic_(\d+)$", path.stem)
+    if match is not None:
+        return int(match.group(1))
+    match = re.search(r"_(\d+)$", path.stem)
+    if match is not None:
+        return int(match.group(1))
+    return None
 
 
 def make_single_env(all_args, run_dir: str):
@@ -280,6 +374,18 @@ def make_single_env(all_args, run_dir: str):
 
 def load_policy(args, env, device: torch.device, spec: AgentSpec, agent_id: int):
     share_policy = spec.policy_type == "shared"
+    if spec.actor_path is not None:
+        ckpt_agent_id = None if share_policy else agent_id
+        policy = policy_loader._build_policy(
+            args,
+            env,
+            agent_id=ckpt_agent_id,
+            share_policy=share_policy,
+            device=device,
+        )
+        policy.actor.load_state_dict(torch.load(spec.actor_path, map_location=device))
+        return policy, spec.step
+
     ckpt_role = None if share_policy else spec.role
     ckpt_agent_id = None if share_policy else agent_id
     return policy_loader.load_agent(

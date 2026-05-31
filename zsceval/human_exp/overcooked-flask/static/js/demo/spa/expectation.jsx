@@ -7,39 +7,15 @@ import {
     OBJECTS_IMAGE_URL,
     TERRAIN_ATLAS,
     TERRAIN_IMAGE_URL,
-    getFrame,
     terrainSymbolToFrame,
 } from "./atlas";
+import { atlasStyle } from "../utils.js";
 
 const VISUAL_SIZE = 56;
 const DEFAULT_SKETCH_TILE_SIZE = 38;
 
-function atlasStyle(atlas, imageUrl, frameName, size, opacity) {
-    const frame = getFrame(atlas, frameName);
-    if (!frame) {
-        return {
-            width: size,
-            height: size,
-            opacity: opacity === undefined ? 1 : opacity,
-        };
-    }
-    const frameDef = frame.frame;
-    const scale = size / frameDef.w;
-    return {
-        width: size,
-        height: size,
-        backgroundImage: 'url("' + imageUrl + '")',
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "-" + String(frameDef.x * scale) + "px -" + String(frameDef.y * scale) + "px",
-        backgroundSize: String(atlas.meta.size.w * scale) + "px " + String(atlas.meta.size.h * scale) + "px",
-        imageRendering: "pixelated",
-        opacity: opacity === undefined ? 1 : opacity,
-        flex: "0 0 auto",
-    };
-}
-
 function Sprite(props) {
-    return <div className={props.className} style={atlasStyle(props.atlas, props.imageUrl, props.frameName, props.size, props.opacity)} />;
+    return <div className={props.className} style={Object.assign({ flex: "0 0 auto" }, atlasStyle(props.atlas, props.imageUrl, props.frameName, props.size, props.opacity))} />;
 }
 
 function ChefSprite(props) {
@@ -227,11 +203,7 @@ function TrajectorySketcher(props) {
                     {points.length > 0 ? (
                         <polyline
                             points={points.map((point) => String(point[0] * tileSize + (tileSize / 2)) + "," + String(point[1] * tileSize + (tileSize / 2))).join(" ")}
-                            fill="none"
-                            stroke="rgba(61, 217, 178, 0.98)"
-                            strokeWidth="5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                            style={{ fill: "none", stroke: "var(--color-main-stroke)", strokeWidth: 5, strokeLinecap: "round", strokeLinejoin: "round" }}
                         />
                     ) : null}
                     {points.map((point, index) => (
@@ -240,7 +212,7 @@ function TrajectorySketcher(props) {
                             cx={point[0] * tileSize + (tileSize / 2)}
                             cy={point[1] * tileSize + (tileSize / 2)}
                             r={index === 0 ? 8 : 5}
-                            fill={index === 0 ? "rgba(100, 168, 255, 1)" : "rgba(61, 217, 178, 1)"}
+                            style={{ fill: index === 0 ? "var(--color-sub)" : "var(--color-main)" }}
                         />
                     ))}
                 </svg>

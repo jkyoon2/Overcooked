@@ -81,16 +81,14 @@ def test_score_accumulates(engine: OvercookedEngine) -> None:
 
 
 def test_tomato_delivery_yields_5(engine: OvercookedEngine) -> None:
-    """Deliver a tomato soup → sparse_reward_by_agent gives 5. (PI-5)"""
+    """Human (agent 0) delivers ttt soup → player_deliver, reward 5, recipe ttt. (PI-5)"""
     engine.reset()
 
     def fake_transition(state, joint_action):
-        new_state, infos = engine.mdp.get_state_transition.__wrapped__(
+        new_state, infos = engine.mdp.__class__.get_state_transition(
             engine.mdp, state, joint_action
-        ) if hasattr(engine.mdp.get_state_transition, "__wrapped__") else (
-            engine.mdp.__class__.get_state_transition(engine.mdp, state, joint_action)
         )
-        infos["sparse_reward_by_agent"] = [5.0, 0.0]
+        infos["sparse_reward_by_agent"] = [5.0, 0.0]  # agent 0 = human
         infos["event_infos"]["soup_delivery"] = [True, False]
         return new_state, infos
 
@@ -100,19 +98,19 @@ def test_tomato_delivery_yields_5(engine: OvercookedEngine) -> None:
     assert result.rewards[0] == 5.0
     deliver_events = [e for e in result.events if e.event_type == "player_deliver"]
     assert len(deliver_events) == 1
-    assert deliver_events[0].payload["recipe"] == "tomato"
+    assert deliver_events[0].payload["recipe"] == "ttt"
     assert deliver_events[0].payload["reward"] == 5.0
 
 
 def test_onion_delivery_yields_20(engine: OvercookedEngine) -> None:
-    """Deliver an onion soup → sparse_reward_by_agent gives 20. (PI-5)"""
+    """Human (agent 0) delivers ooo soup → player_deliver, reward 20, recipe ooo. (PI-5)"""
     engine.reset()
 
     def fake_transition(state, joint_action):
         new_state, infos = engine.mdp.__class__.get_state_transition(
             engine.mdp, state, joint_action
         )
-        infos["sparse_reward_by_agent"] = [20.0, 0.0]
+        infos["sparse_reward_by_agent"] = [20.0, 0.0]  # agent 0 = human
         infos["event_infos"]["soup_delivery"] = [True, False]
         return new_state, infos
 
@@ -122,7 +120,7 @@ def test_onion_delivery_yields_20(engine: OvercookedEngine) -> None:
     assert result.rewards[0] == 20.0
     deliver_events = [e for e in result.events if e.event_type == "player_deliver"]
     assert len(deliver_events) == 1
-    assert deliver_events[0].payload["recipe"] == "onion"
+    assert deliver_events[0].payload["recipe"] == "ooo"
     assert deliver_events[0].payload["reward"] == 20.0
 
 

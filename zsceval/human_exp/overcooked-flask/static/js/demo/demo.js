@@ -32086,171 +32086,45 @@ module.exports={
 },{}],18:[function(require,module,exports){
 "use strict";
 
-var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = AtlasSprite;
 
 var _react = require("react");
 
 var _react2 = _interopRequireDefault(_react);
 
-var _reactDom = require("react-dom");
-
-var _reactDom2 = _interopRequireDefault(_reactDom);
-
-var _board = require("./spa/board.jsx");
-
-var _board2 = _interopRequireDefault(_board);
-
-var _expectation = require("./spa/expectation.jsx");
-
-var _expectation2 = _interopRequireDefault(_expectation);
-
-var _atlas = require("./spa/atlas.js");
+var _utils = require("../utils.js");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var TIMESTEP_MS = 220;
-var PREVIEW_LOOP_MS = 1280;
-var REPLAY_TIMESTEP_MS = 260;
-var DEFAULT_ACTION_IDX = 4;
-var DIRECTION_KEY_CODES = {
-    37: 3,
-    38: 0,
-    39: 2,
-    40: 1,
-    65: 3,
-    68: 2,
-    83: 1,
-    87: 0
-};
-var INTERACT_KEY_CODES = {
-    13: true,
-    32: true
-};
-function apiPost(url, payload) {
-    return window.fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: payload ? JSON.stringify(payload) : null
-    }).then(function (response) {
-        return response.text().then(function (text) {
-            if (!response.ok) {
-                throw new Error(text || "Request failed: " + response.status);
-            }
-            return text ? JSON.parse(text) : {};
-        });
-    });
-}
-
-function readJsonStorage(key) {
-    try {
-        return JSON.parse(window.sessionStorage.getItem(key) || "null");
-    } catch (error) {
-        return null;
-    }
-}
-
-function writeJsonStorage(key, value) {
-    window.sessionStorage.setItem(key, JSON.stringify(value));
-}
-
-function clearJsonStorage(key) {
-    window.sessionStorage.removeItem(key);
-}
-
-function dedupe(values) {
-    return values.filter(function (value, index) {
-        return values.indexOf(value) === index;
-    });
-}
-
-function removeValue(values, value) {
-    return values.filter(function (item) {
-        return item !== value;
-    });
-}
-
-function createExpectationDraft() {
-    return {
-        selectedSubtaskId: "",
-        pathPoints: [],
-        confidence: ""
-    };
-}
-
-function buildPreviewState(layoutGrid) {
-    var players = [null, null];
-    layoutGrid.forEach(function (row, y) {
-        row.split("").forEach(function (symbol, x) {
-            if (symbol === "1" || symbol === "2") {
-                players[Number(symbol) - 1] = {
-                    position: [x, y],
-                    orientation: [0, 1],
-                    held_object: null
-                };
-            }
-        });
-    });
-    return {
-        players: players.filter(Boolean),
-        objects: [],
-        bonus_orders: [],
-        all_orders: [],
-        timestep: 0
-    };
-}
-
-function buildMockState(players, objects, timestep) {
-    return {
-        players: players,
-        objects: objects || [],
-        bonus_orders: [],
-        all_orders: [],
-        timestep: timestep || 0
-    };
-}
-
-function makePlayer(position, orientation, heldObject) {
-    return {
-        position: position,
-        orientation: orientation,
-        held_object: heldObject || null
-    };
-}
-
-function makeObject(name, position, extra) {
-    var obj = {
-        name: name,
-        position: position
-    };
-    return Object.assign(obj, extra || {});
-}
-
-function atlasStyle(atlas, imageUrl, frameName, size) {
-    var frame = (0, _atlas.getFrame)(atlas, frameName);
-    if (!frame) {
-        return {
-            width: size,
-            height: size
-        };
-    }
-    var frameDef = frame.frame;
-    var scale = size / frameDef.w;
-    return {
-        width: size,
-        height: size,
-        backgroundImage: 'url("' + imageUrl + '")',
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "-" + String(frameDef.x * scale) + "px -" + String(frameDef.y * scale) + "px",
-        backgroundSize: String(atlas.meta.size.w * scale) + "px " + String(atlas.meta.size.h * scale) + "px",
-        imageRendering: "pixelated"
-    };
-}
-
 function AtlasSprite(props) {
-    return _react2.default.createElement("div", { className: props.className || "mini-sprite", style: atlasStyle(props.atlas, props.imageUrl, props.frameName, props.size || 40) });
+    return _react2.default.createElement("div", {
+        className: props.className || "mini-sprite",
+        style: (0, _utils.atlasStyle)(props.atlas, props.imageUrl, props.frameName, props.size || 40)
+    });
 }
+
+},{"../utils.js":48,"react":8}],19:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = ChefVisual;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _atlas = require("../spa/atlas.js");
+
+var _AtlasSprite = require("./AtlasSprite.jsx");
+
+var _AtlasSprite2 = _interopRequireDefault(_AtlasSprite);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function ChefVisual(props) {
     var direction = "SOUTH";
@@ -32260,10 +32134,30 @@ function ChefVisual(props) {
     return _react2.default.createElement(
         "div",
         { className: "mini-sprite", style: { width: size, height: size } },
-        _react2.default.createElement(AtlasSprite, { atlas: _atlas.CHEFS_ATLAS, imageUrl: _atlas.CHEFS_IMAGE_URL, frameName: bodyFrame, size: size, className: "mini-sprite" }),
-        _react2.default.createElement(AtlasSprite, { atlas: _atlas.CHEFS_ATLAS, imageUrl: _atlas.CHEFS_IMAGE_URL, frameName: hatFrame, size: size, className: "mini-sprite mini-sprite--overlay" })
+        _react2.default.createElement(_AtlasSprite2.default, { atlas: _atlas.CHEFS_ATLAS, imageUrl: _atlas.CHEFS_IMAGE_URL, frameName: bodyFrame, size: size, className: "mini-sprite" }),
+        _react2.default.createElement(_AtlasSprite2.default, { atlas: _atlas.CHEFS_ATLAS, imageUrl: _atlas.CHEFS_IMAGE_URL, frameName: hatFrame, size: size, className: "mini-sprite mini-sprite--overlay" })
     );
 }
+
+},{"../spa/atlas.js":36,"./AtlasSprite.jsx":18,"react":8}],20:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = IngredientStrip;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _atlas = require("../spa/atlas.js");
+
+var _AtlasSprite = require("./AtlasSprite.jsx");
+
+var _AtlasSprite2 = _interopRequireDefault(_AtlasSprite);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function IngredientStrip(props) {
     return _react2.default.createElement(
@@ -32273,7 +32167,7 @@ function IngredientStrip(props) {
             return _react2.default.createElement(
                 _react2.default.Fragment,
                 { key: ingredient + "-" + index },
-                _react2.default.createElement(AtlasSprite, {
+                _react2.default.createElement(_AtlasSprite2.default, {
                     atlas: _atlas.OBJECTS_ATLAS,
                     imageUrl: _atlas.OBJECTS_IMAGE_URL,
                     frameName: ingredient === "onion" ? "onion.png" : "tomato.png",
@@ -32290,129 +32184,453 @@ function IngredientStrip(props) {
     );
 }
 
-function getDefaultRunnerState(session) {
-    var trialIndexByStage = {};
-    session.stages.forEach(function (stage) {
-        if (stage.type === "trial_block" || stage.type === "tutorial_lab") {
-            trialIndexByStage[stage.id] = 0;
-        }
-    });
-    return {
-        stageIndex: 0,
-        trialIndexByStage: trialIndexByStage,
-        completedStages: [],
-        completedTrials: {},
-        trialSummaries: {},
-        sectionResponses: {}
-    };
-}
+},{"../spa/atlas.js":36,"./AtlasSprite.jsx":18,"react":8}],21:[function(require,module,exports){
+"use strict";
 
-function nextIncompleteStageIndex(session, completedStages, fallbackIndex) {
-    if (typeof fallbackIndex === "number" && fallbackIndex >= 0 && fallbackIndex < session.stages.length) {
-        if (completedStages.indexOf(session.stages[fallbackIndex].id) < 0) {
-            return fallbackIndex;
-        }
-    }
-    for (var index = 0; index < session.stages.length; index += 1) {
-        if (completedStages.indexOf(session.stages[index].id) < 0) {
-            return index;
-        }
-    }
-    return session.stages.length;
-}
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = InputField;
 
-function buildRunnerStateFromServer(session, bundle, userInfo) {
-    var state = getDefaultRunnerState(session);
-    var progress = bundle.progress || {};
-    var savedTrials = bundle.saved_trials || {};
-    var savedSections = bundle.saved_sections || {};
-    var hintedIndex = 0;
+var _react = require("react");
 
-    Object.keys(savedSections).forEach(function (sectionId) {
-        state.sectionResponses[sectionId] = savedSections[sectionId];
-    });
+var _react2 = _interopRequireDefault(_react);
 
-    session.stages.forEach(function (stage, index) {
-        if (stage.type === "trial_block" || stage.type === "tutorial_lab") {
-            var completedCount = 0;
-            stage.trial_ids.forEach(function (trialId) {
-                var trialRecord = savedTrials[trialId];
-                if (trialRecord && trialRecord.finished_at) {
-                    completedCount += 1;
-                    state.completedTrials[trialId] = true;
-                    if (trialRecord.trial_summary) {
-                        state.trialSummaries[trialId] = trialRecord.trial_summary;
-                    }
-                }
-            });
-            state.trialIndexByStage[stage.id] = completedCount;
-            if (completedCount >= stage.trial_ids.length && stage.trial_ids.length > 0) {
-                state.completedStages = dedupe(state.completedStages.concat([stage.id]));
-            }
-        } else if (savedSections[stage.id]) {
-            state.completedStages = dedupe(state.completedStages.concat([stage.id]));
-        }
-        if (progress.current_stage_id && progress.current_stage_id === stage.id) {
-            hintedIndex = index;
-        }
-    });
+var _utils = require("../utils.js");
 
-    state.completedStages = dedupe((progress.completed_stage_ids || []).concat(state.completedStages));
-    if (!userInfo || !userInfo.name) {
-        state.stageIndex = 0;
-        return state;
-    }
-    state.stageIndex = nextIncompleteStageIndex(session, state.completedStages, hintedIndex);
-    return state;
-}
+var _LikertBar = require("./LikertBar.jsx");
 
-function makeTrajId(trialId) {
-    var now = new Date();
-    return trialId + "_" + [now.getFullYear(), now.getMonth() + 1, now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds()].join("-");
-}
+var _LikertBar2 = _interopRequireDefault(_LikertBar);
 
-function fieldValueFromEvent(field, event) {
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function InputField(props) {
+    var field = props.field;
+    var value = (0, _utils.normalizeChoiceValue)(props.value);
+
     if (field.type === "radio") {
-        return event.target.value;
+        var isInlineRow = field.options.length <= 4;
+        return _react2.default.createElement(
+            "div",
+            { className: "form-field" },
+            _react2.default.createElement(
+                "label",
+                { className: "form-field__label" },
+                field.label,
+                field.required ? " *" : ""
+            ),
+            _react2.default.createElement(
+                "div",
+                { className: "choice-grid" + (isInlineRow ? " choice-grid--inline" : "") },
+                field.options.map(function (option) {
+                    var optionValue = (0, _utils.normalizeChoiceValue)(option.value);
+                    var optionLabel = (0, _utils.normalizeChoiceLabel)(option.label, option.value);
+                    return _react2.default.createElement(
+                        "button",
+                        {
+                            className: "choice-pill choice-pill--segmented" + (String(value) === String(optionValue) ? " is-selected" : ""),
+                            key: field.id + "-" + optionValue,
+                            type: "button",
+                            onClick: function onClick() {
+                                return props.onChange({ target: { value: optionValue } });
+                            }
+                        },
+                        _react2.default.createElement(
+                            "span",
+                            { className: "choice-pill__label" },
+                            optionLabel
+                        )
+                    );
+                })
+            )
+        );
     }
-    return event.target.value;
+
+    if (field.type === "scale" || field.type === "scale_bar") {
+        return _react2.default.createElement(_LikertBar2.default, {
+            fieldId: field.id,
+            label: field.label,
+            min: field.min,
+            max: field.max,
+            value: value,
+            leftLabel: field.left_label,
+            rightLabel: field.right_label,
+            onChange: function onChange(nextValue) {
+                return props.onChange({ target: { value: String(nextValue) } });
+            }
+        });
+    }
+
+    if (field.type === "textarea") {
+        return _react2.default.createElement(
+            "div",
+            { className: "form-field" },
+            _react2.default.createElement(
+                "label",
+                { className: "form-field__label" },
+                field.label,
+                field.required ? " *" : ""
+            ),
+            _react2.default.createElement("textarea", { className: "form-textarea", value: value || "", onChange: props.onChange })
+        );
+    }
+
+    return _react2.default.createElement(
+        "div",
+        { className: "form-field" },
+        _react2.default.createElement(
+            "label",
+            { className: "form-field__label" },
+            field.label,
+            field.required ? " *" : ""
+        ),
+        _react2.default.createElement("input", { className: "form-input", type: field.type, min: field.min, max: field.max, value: value || "", onChange: props.onChange })
+    );
 }
 
-function hasValue(value) {
-    if (value === null || value === undefined) {
-        return false;
+},{"../utils.js":48,"./LikertBar.jsx":23,"react":8}],22:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+exports.default = InteractiveTrialRunner;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _board = require("../spa/board.jsx");
+
+var _board2 = _interopRequireDefault(_board);
+
+var _expectation = require("../spa/expectation.jsx");
+
+var _expectation2 = _interopRequireDefault(_expectation);
+
+var _constants = require("../constants.js");
+
+var _utils = require("../utils.js");
+
+var _useBufferedInput = require("../hooks/useBufferedInput.js");
+
+var _useBufferedInput2 = _interopRequireDefault(_useBufferedInput);
+
+var _ModalShell = require("./ModalShell.jsx");
+
+var _ModalShell2 = _interopRequireDefault(_ModalShell);
+
+var _TrialStats = require("./TrialStats.jsx");
+
+var _TrialStats2 = _interopRequireDefault(_TrialStats);
+
+var _PostTrialRatingModal = require("./PostTrialRatingModal.jsx");
+
+var _PostTrialRatingModal2 = _interopRequireDefault(_PostTrialRatingModal);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function InteractiveTrialRunner(props) {
+    var _useState = (0, _react.useState)(null),
+        _useState2 = _slicedToArray(_useState, 2),
+        runtime = _useState2[0],
+        setRuntime = _useState2[1];
+
+    var _useState3 = (0, _react.useState)("booting"),
+        _useState4 = _slicedToArray(_useState3, 2),
+        status = _useState4[0],
+        setStatus = _useState4[1];
+
+    var _useState5 = (0, _react.useState)(""),
+        _useState6 = _slicedToArray(_useState5, 2),
+        error = _useState6[0],
+        setError = _useState6[1];
+
+    var _useState7 = (0, _react.useState)(null),
+        _useState8 = _slicedToArray(_useState7, 2),
+        probe = _useState8[0],
+        setProbe = _useState8[1];
+
+    var _useState9 = (0, _react.useState)(false),
+        _useState10 = _slicedToArray(_useState9, 2),
+        probeSubmitted = _useState10[0],
+        setProbeSubmitted = _useState10[1];
+
+    var _useState11 = (0, _react.useState)(0),
+        _useState12 = _slicedToArray(_useState11, 2),
+        probeDraftKey = _useState12[0],
+        setProbeDraftKey = _useState12[1];
+
+    var _useState13 = (0, _react.useState)(null),
+        _useState14 = _slicedToArray(_useState13, 2),
+        finishPayload = _useState14[0],
+        setFinishPayload = _useState14[1];
+
+    var statusRef = (0, _react.useRef)("booting");
+    var input = (0, _useBufferedInput2.default)(props.trial.human_player_index !== null && props.trial.human_player_index !== undefined);
+
+    (0, _react.useEffect)(function () {
+        statusRef.current = status;
+    }, [status]);
+
+    (0, _react.useEffect)(function () {
+        var mounted = true;
+        (0, _utils.apiPost)("/start_trial", {
+            user_info: props.userInfo,
+            trial_id: props.trial.id
+        }).then(function (startPayload) {
+            if (!mounted) {
+                return;
+            }
+            setRuntime(startPayload.runtime);
+            setStatus("running");
+        }).catch(function (startError) {
+            if (!mounted) {
+                return;
+            }
+            setError(String(startError.message || startError));
+            setStatus("error");
+        });
+        return function cleanup() {
+            mounted = false;
+        };
+    }, [props.trial.id, props.userInfo]);
+
+    (0, _react.useEffect)(function () {
+        if (status !== "running") {
+            return undefined;
+        }
+        var cancelled = false;
+        var timerId = null;
+
+        function schedule(delay) {
+            timerId = window.setTimeout(stepLoop, delay);
+        }
+
+        function stepLoop() {
+            if (cancelled || statusRef.current !== "running") {
+                return;
+            }
+            var startedAt = window.performance.now();
+            (0, _utils.apiPost)("/step_trial", {
+                user_info: props.userInfo,
+                trial_id: props.trial.id,
+                human_action_idx: input.consumeAction()
+            }).then(function (response) {
+                if (cancelled) {
+                    return;
+                }
+                if (response.probe_pending) {
+                    setRuntime(response.runtime);
+                    setProbe(response.probe);
+                    setProbeSubmitted(false);
+                    setProbeDraftKey(function (current) {
+                        return current + 1;
+                    });
+                    setStatus("probe");
+                    return;
+                }
+                setRuntime(response.runtime);
+                if (response.done) {
+                    finishTrial();
+                    return;
+                }
+                schedule(Math.max(0, _constants.TIMESTEP_MS - (window.performance.now() - startedAt)));
+            }).catch(function (stepError) {
+                if (cancelled) {
+                    return;
+                }
+                setError(String(stepError.message || stepError));
+                setStatus("error");
+            });
+        }
+
+        schedule(0);
+        return function cleanup() {
+            cancelled = true;
+            window.clearTimeout(timerId);
+        };
+    }, [status, props.trial.id, props.userInfo, input]);
+
+    function finishTrial() {
+        setStatus("finishing");
+        (0, _utils.apiPost)("/finish_episode", {
+            user_info: props.userInfo,
+            trial_id: props.trial.id,
+            traj_id: (0, _utils.makeTrajId)(props.trial.id),
+            summary: { client: "react-spa" }
+        }).then(function (payload) {
+            if (!props.trial.post_trial_questions || props.trial.post_trial_questions.length === 0) {
+                props.onComplete(payload.trial_summary, payload.trajectory);
+                return;
+            }
+            setFinishPayload(payload);
+            setStatus("rating");
+        }).catch(function (finishError) {
+            setError(String(finishError.message || finishError));
+            setStatus("error");
+        });
     }
-    if (typeof value === "boolean") {
-        return true;
+
+    function submitProbe(expectation) {
+        (0, _utils.apiPost)("/submit_probe", {
+            user_info: props.userInfo,
+            trial_id: props.trial.id,
+            selected_subtask_id: expectation.selectedSubtaskId,
+            extra: {
+                expected_path: expectation.expectedPath,
+                confidence: expectation.confidence,
+                start_position: expectation.startPosition,
+                input_mode: "step_wizard"
+            }
+        }).then(function (response) {
+            return (0, _utils.apiPost)("/save_trial_data", {
+                user_info: props.userInfo,
+                trial_id: props.trial.id,
+                updates: { latest_probe: response.probe_record }
+            });
+        }).then(function () {
+            setProbeSubmitted(true);
+        }).catch(function (submitError) {
+            setError(String(submitError.message || submitError));
+            setStatus("error");
+        });
     }
-    return String(value).trim().length > 0;
+
+    function resumeAfterProbe() {
+        (0, _utils.apiPost)("/resume_trial_after_probe", {
+            user_info: props.userInfo,
+            trial_id: props.trial.id
+        }).then(function (response) {
+            setRuntime(response.runtime);
+            setProbe(null);
+            setProbeSubmitted(false);
+            if (response.done) {
+                finishTrial();return;
+            }
+            setStatus("running");
+        }).catch(function (resumeError) {
+            setError(String(resumeError.message || resumeError));
+            setStatus("error");
+        });
+    }
+
+    function submitTrialRating(values) {
+        var mergedSummary = Object.assign({}, finishPayload.trial_summary, { post_trial_rating: values });
+        (0, _utils.apiPost)("/save_trial_data", {
+            user_info: props.userInfo,
+            trial_id: props.trial.id,
+            updates: { post_trial_rating: values, trial_summary: mergedSummary }
+        }).then(function () {
+            props.onComplete(mergedSummary, finishPayload.trajectory);
+        }).catch(function (ratingError) {
+            setError(String(ratingError.message || ratingError));
+            setStatus("error");
+        });
+    }
+
+    return _react2.default.createElement(
+        "div",
+        { className: "trial-screen" },
+        _react2.default.createElement(
+            "section",
+            { className: "panel-card panel-card--board" },
+            _react2.default.createElement(
+                "div",
+                { className: "trial-hero" },
+                _react2.default.createElement(
+                    "div",
+                    { className: "panel-eyebrow" },
+                    props.trial.title
+                ),
+                _react2.default.createElement(
+                    "h3",
+                    null,
+                    props.trial.mode === "observe" ? "Focus on the highlighted AI chef" : "Cook with the AI chef"
+                ),
+                _react2.default.createElement(
+                    "p",
+                    null,
+                    props.trial.instruction
+                ),
+                props.trial.mode === "observe" ? _react2.default.createElement(
+                    "div",
+                    { className: "callout" },
+                    "Watch the chef with the bold green focus box."
+                ) : null
+            ),
+            _react2.default.createElement(_TrialStats2.default, { runtime: runtime || {} }),
+            _react2.default.createElement(_board2.default, {
+                layoutGrid: props.trial.layout_grid,
+                state: runtime ? runtime.state : null,
+                trial: Object.assign({}, props.trial, { show_target_highlight: props.trial.mode === "observe" })
+            }),
+            error ? _react2.default.createElement(
+                "div",
+                { className: "callout callout--danger" },
+                error
+            ) : null
+        ),
+        _react2.default.createElement(
+            _ModalShell2.default,
+            { open: status === "probe", eyebrow: "Probe", title: probeSubmitted ? "Expectation saved" : "What do you expect next?" },
+            !probeSubmitted ? _react2.default.createElement(_expectation2.default, {
+                key: "probe-" + probeDraftKey,
+                title: "Report what you expect from the AI chef",
+                probeIndex: probe ? probe.probe_index : 1,
+                probeTotal: probe ? probe.probe_total : props.trial.probe.count,
+                prompt: props.trial.probe.prompt,
+                sketchPrompt: props.trial.probe.sketch_prompt,
+                confidencePrompt: props.trial.probe.confidence_prompt,
+                subtaskOptions: props.subtaskOptions,
+                layoutGrid: props.trial.layout_grid,
+                state: runtime ? runtime.state : null,
+                targetAgentIndex: props.trial.target_agent_index,
+                onSubmit: submitProbe
+            }) : _react2.default.createElement(
+                "div",
+                { className: "panel-stack" },
+                _react2.default.createElement(
+                    "p",
+                    null,
+                    "Now watch what the AI chef actually does."
+                ),
+                _react2.default.createElement(
+                    "div",
+                    { className: "stage-actions" },
+                    _react2.default.createElement(
+                        "button",
+                        { className: "primary-button", type: "button", onClick: resumeAfterProbe },
+                        "Resume"
+                    )
+                )
+            )
+        ),
+        _react2.default.createElement(_PostTrialRatingModal2.default, {
+            open: status === "rating" && Boolean(finishPayload),
+            trial: props.trial,
+            initialValues: {},
+            onSubmit: submitTrialRating
+        })
+    );
 }
 
-function normalizeChoiceValue(value) {
-    if (value === true) {
-        return "yes";
-    }
-    if (value === false) {
-        return "no";
-    }
-    return value === null || value === undefined ? "" : String(value);
-}
+},{"../constants.js":33,"../hooks/useBufferedInput.js":34,"../spa/board.jsx":37,"../spa/expectation.jsx":38,"../utils.js":48,"./ModalShell.jsx":25,"./PostTrialRatingModal.jsx":28,"./TrialStats.jsx":32,"react":8}],23:[function(require,module,exports){
+"use strict";
 
-function normalizeChoiceLabel(label, value) {
-    if (typeof label === "boolean") {
-        return label ? "Yes" : "No";
-    }
-    if (label !== null && label !== undefined && String(label).trim().length > 0) {
-        return String(label);
-    }
-    if (value === true) {
-        return "Yes";
-    }
-    if (value === false) {
-        return "No";
-    }
-    return String(value);
-}
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = LikertBar;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function LikertBar(props) {
     var ticks = [];
@@ -32466,89 +32684,106 @@ function LikertBar(props) {
     );
 }
 
-function InputField(props) {
-    var field = props.field;
-    var value = normalizeChoiceValue(props.value);
+},{"react":8}],24:[function(require,module,exports){
+"use strict";
 
-    if (field.type === "radio") {
-        var isInlineRow = field.options.length <= 4;
-        return _react2.default.createElement(
-            "div",
-            { className: "form-field" },
-            _react2.default.createElement(
-                "label",
-                { className: "form-field__label" },
-                field.label,
-                field.required ? " *" : ""
-            ),
-            _react2.default.createElement(
-                "div",
-                { className: "choice-grid" + (isInlineRow ? " choice-grid--inline" : "") },
-                field.options.map(function (option) {
-                    var optionValue = normalizeChoiceValue(option.value);
-                    var optionLabel = normalizeChoiceLabel(option.label, option.value);
-                    return _react2.default.createElement(
-                        "button",
-                        {
-                            className: "choice-pill choice-pill--segmented" + (String(value) === String(optionValue) ? " is-selected" : ""),
-                            key: field.id + "-" + optionValue,
-                            type: "button",
-                            onClick: function onClick() {
-                                return props.onChange({ target: { value: optionValue } });
-                            }
-                        },
-                        _react2.default.createElement(
-                            "span",
-                            { className: "choice-pill__label" },
-                            optionLabel
-                        )
-                    );
-                })
-            )
-        );
-    }
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
 
-    if (field.type === "scale" || field.type === "scale_bar") {
-        return _react2.default.createElement(LikertBar, {
-            fieldId: field.id,
-            label: field.label,
-            min: field.min,
-            max: field.max,
-            value: value,
-            leftLabel: field.left_label,
-            rightLabel: field.right_label,
-            onChange: function onChange(nextValue) {
-                return props.onChange({ target: { value: String(nextValue) } });
-            }
-        });
-    }
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
-    if (field.type === "textarea") {
-        return _react2.default.createElement(
-            "div",
-            { className: "form-field" },
-            _react2.default.createElement(
-                "label",
-                { className: "form-field__label" },
-                field.label,
-                field.required ? " *" : ""
-            ),
-            _react2.default.createElement("textarea", { className: "form-textarea", value: value || "", onChange: props.onChange })
-        );
-    }
+exports.default = LoopingBoardPreview;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _board = require("../spa/board.jsx");
+
+var _board2 = _interopRequireDefault(_board);
+
+var _constants = require("../constants.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function LoopingBoardPreview(props) {
+    var _useState = (0, _react.useState)(0),
+        _useState2 = _slicedToArray(_useState, 2),
+        cursor = _useState2[0],
+        setCursor = _useState2[1];
+
+    var frames = props.frames || [];
+
+    (0, _react.useEffect)(function () {
+        if (!frames.length) {
+            return undefined;
+        }
+        var timerId = window.setInterval(function () {
+            setCursor(function (current) {
+                return current + 1;
+            });
+        }, props.intervalMs || _constants.PREVIEW_LOOP_MS);
+        return function cleanup() {
+            window.clearInterval(timerId);
+        };
+    }, [frames.length, props.intervalMs]);
+
+    var frameEntry = frames.length ? frames[cursor % frames.length] : null;
+    var currentState = frameEntry && frameEntry.state ? frameEntry.state : frameEntry;
+    var activeStepId = frameEntry && frameEntry.activeSubtaskId ? frameEntry.activeSubtaskId : "";
+    var previewTrial = Object.assign({}, props.trial || {}, {
+        show_target_highlight: Boolean(props.showHighlight)
+    });
 
     return _react2.default.createElement(
         "div",
-        { className: "form-field" },
+        { className: "looping-board-preview" + (props.compact ? " is-compact" : "") },
         _react2.default.createElement(
-            "label",
-            { className: "form-field__label" },
-            field.label,
-            field.required ? " *" : ""
+            "div",
+            { className: "looping-board-preview__board" },
+            _react2.default.createElement(_board2.default, {
+                layoutGrid: props.layoutGrid,
+                state: currentState,
+                trial: previewTrial,
+                tileSize: props.tileSize || (props.compact ? 52 : undefined)
+            })
         ),
-        _react2.default.createElement("input", { className: "form-input", type: field.type, min: field.min, max: field.max, value: value || "", onChange: props.onChange })
+        props.steps && props.steps.length ? _react2.default.createElement(
+            "div",
+            { className: "looping-board-preview__steps" },
+            props.steps.map(function (step) {
+                return _react2.default.createElement(
+                    "div",
+                    {
+                        className: "looping-board-preview__step" + (step.id === activeStepId ? " is-active" : ""),
+                        key: step.id
+                    },
+                    step.label
+                );
+            })
+        ) : null,
+        props.caption ? _react2.default.createElement(
+            "p",
+            { className: "looping-board-preview__caption" },
+            props.caption
+        ) : null
     );
 }
+
+},{"../constants.js":33,"../spa/board.jsx":37,"react":8}],25:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = ModalShell;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function ModalShell(props) {
     if (!props.open) {
@@ -32587,170 +32822,84 @@ function ModalShell(props) {
     );
 }
 
-function splitStageHeading(stage) {
-    if (!stage) {
-        return { eyebrow: "", title: "Session complete" };
-    }
-    var blockMatch = stage.title.match(/^(Main Block \d+):\s*(.+)$/);
-    if (blockMatch) {
-        return {
-            eyebrow: blockMatch[1],
-            title: blockMatch[2]
-        };
-    }
-    return {
-        eyebrow: "",
-        title: stage.title
-    };
-}
+},{"react":8}],26:[function(require,module,exports){
+"use strict";
 
-function TopProgress(props) {
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = ModePlaybackCard;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _LoopingBoardPreview = require("./LoopingBoardPreview.jsx");
+
+var _LoopingBoardPreview2 = _interopRequireDefault(_LoopingBoardPreview);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function ModePlaybackCard(props) {
     return _react2.default.createElement(
-        "section",
-        { className: "app-rail" },
+        "div",
+        { className: "mode-card mode-card--playback" },
         _react2.default.createElement(
             "div",
-            { className: "app-rail__header" },
+            { className: "mode-card__copy" },
             _react2.default.createElement(
-                "div",
-                { className: "brand-block" },
-                _react2.default.createElement(
-                    "div",
-                    { className: "brand-badge" },
-                    "AI"
-                ),
-                _react2.default.createElement(
-                    "div",
-                    null,
-                    _react2.default.createElement(
-                        "h1",
-                        null,
-                        props.session.title
-                    ),
-                    _react2.default.createElement(
-                        "p",
-                        null,
-                        props.session.subtitle
-                    )
-                )
+                "h3",
+                null,
+                props.title
+            ),
+            _react2.default.createElement(
+                "p",
+                null,
+                props.description
             )
         ),
         _react2.default.createElement(
             "div",
-            { className: "stage-progress", style: { gridTemplateColumns: "repeat(" + String(props.session.stages.length) + ", minmax(0, 1fr))" } },
-            props.session.stages.map(function (stage, index) {
-                var isComplete = props.runnerState.completedStages.indexOf(stage.id) >= 0;
-                var isCurrent = props.runnerState.stageIndex === index;
-                return _react2.default.createElement("div", { className: "stage-progress__segment" + (isCurrent ? " is-current" : "") + (isComplete ? " is-complete" : ""), key: stage.id });
+            { className: "mode-card__asset-stage mode-card__asset-stage--playback" },
+            _react2.default.createElement(_LoopingBoardPreview2.default, {
+                compact: true,
+                frames: props.frames,
+                layoutGrid: props.layoutGrid,
+                trial: props.trial,
+                caption: props.caption
             })
         )
     );
 }
 
-function StageHeader(props) {
-    var heading = splitStageHeading(props.stage);
-    var body = props.stage && props.stage.body && props.stage.body.length ? props.stage.body[0] : props.stage && props.stage.type === "survey" ? "Answer a few short questions, then continue." : "Continue when you are ready.";
-    return _react2.default.createElement(
-        "header",
-        { className: "stage-header" },
-        _react2.default.createElement(
-            "div",
-            null,
-            heading.eyebrow ? _react2.default.createElement(
-                "div",
-                { className: "panel-eyebrow" },
-                heading.eyebrow
-            ) : null,
-            _react2.default.createElement(
-                "h2",
-                null,
-                heading.title
-            ),
-            _react2.default.createElement(
-                "p",
-                null,
-                body
-            )
-        )
-    );
-}
+},{"./LoopingBoardPreview.jsx":24,"react":8}],27:[function(require,module,exports){
+"use strict";
 
-function PreviewCursor(props) {
-    return _react2.default.createElement("div", {
-        className: "preview-cursor" + (props.isClicking ? " is-clicking" : ""),
-        style: {
-            left: props.left,
-            top: props.top
-        }
-    });
-}
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
 
-function buildPreviewExpectation(stepIndex, state, targetAgentIndex) {
-    var targetPlayer = state && state.players ? state.players[targetAgentIndex] : null;
-    var startPosition = targetPlayer ? targetPlayer.position : [8, 3];
-    var route = [[startPosition[0] - 1, startPosition[1]], [startPosition[0] - 2, startPosition[1]], [startPosition[0] - 2, startPosition[1] - 1]];
-    var pages = [{
-        pageIndex: 0,
-        selectedSubtaskId: "collect_tomato",
-        pathPoints: [],
-        confidence: "",
-        cursorLeft: "74%",
-        cursorTop: "42%"
-    }, {
-        pageIndex: 1,
-        selectedSubtaskId: "collect_tomato",
-        pathPoints: route,
-        confidence: "",
-        cursorLeft: "64%",
-        cursorTop: "72%"
-    }, {
-        pageIndex: 2,
-        selectedSubtaskId: "collect_tomato",
-        pathPoints: route,
-        confidence: 6,
-        cursorLeft: "78%",
-        cursorTop: "86%"
-    }];
-    return pages[stepIndex % pages.length];
-}
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
-function LiveProbePreview(props) {
-    var previewState = buildPreviewExpectation(props.stepIndex, props.state, props.targetAgentIndex);
-    return _react2.default.createElement(
-        "div",
-        { className: "preview-probe" },
-        _react2.default.createElement(
-            "div",
-            { className: "preview-probe__modal preview-probe__modal--live" },
-            _react2.default.createElement(
-                "div",
-                { className: "preview-probe__composer" },
-                _react2.default.createElement(_expectation2.default, {
-                    readOnly: true,
-                    compact: true,
-                    previewSubtaskLimit: 4,
-                    sketchTileSize: 24,
-                    forcedPageIndex: previewState.pageIndex,
-                    title: props.title,
-                    probeIndex: 1,
-                    probeTotal: 3,
-                    prompt: "What do you expect from the AI chef?",
-                    sketchPrompt: "Sketch the route you expected.",
-                    confidencePrompt: "How confident are you?",
-                    subtaskOptions: props.subtaskOptions,
-                    layoutGrid: props.layoutGrid,
-                    state: props.state,
-                    targetAgentIndex: props.targetAgentIndex,
-                    selectedSubtaskId: previewState.selectedSubtaskId,
-                    pathPoints: previewState.pathPoints,
-                    confidence: previewState.confidence,
-                    onSubmit: function onSubmit() {}
-                })
-            )
-        ),
-        _react2.default.createElement(PreviewCursor, { left: previewState.cursorLeft, top: previewState.cursorTop, isClicking: true })
-    );
-}
+exports.default = ObserveHeroPreview;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _board = require("../spa/board.jsx");
+
+var _board2 = _interopRequireDefault(_board);
+
+var _expectation = require("../spa/expectation.jsx");
+
+var _expectation2 = _interopRequireDefault(_expectation);
+
+var _constants = require("../constants.js");
+
+var _utils = require("../utils.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function ObserveHeroPreview(props) {
     var _useState = (0, _react.useState)(0),
@@ -32763,17 +32912,16 @@ function ObserveHeroPreview(props) {
             setCursor(function (current) {
                 return current + 1;
             });
-        }, PREVIEW_LOOP_MS);
+        }, _constants.PREVIEW_LOOP_MS);
         return function cleanup() {
             window.clearInterval(timerId);
         };
     }, []);
+
     var frameIndex = cursor % props.frames.length;
     var currentState = props.frames[frameIndex];
-    var previewState = buildPreviewExpectation(cursor, currentState, props.trial.target_agent_index);
-    var previewTrial = Object.assign({}, props.trial, {
-        show_target_highlight: false
-    });
+    var previewState = (0, _utils.buildPreviewExpectation)(cursor, currentState, props.trial.target_agent_index);
+    var previewTrial = Object.assign({}, props.trial, { show_target_highlight: false });
 
     return _react2.default.createElement(
         "div",
@@ -32842,733 +32990,546 @@ function ObserveHeroPreview(props) {
     );
 }
 
-function AnimatedSceneCard(props) {
-    var _useState3 = (0, _react.useState)(0),
-        _useState4 = _slicedToArray(_useState3, 2),
-        cursor = _useState4[0],
-        setCursor = _useState4[1];
+},{"../constants.js":33,"../spa/board.jsx":37,"../spa/expectation.jsx":38,"../utils.js":48,"react":8}],28:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+exports.default = PostTrialRatingModal;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _utils = require("../utils.js");
+
+var _ModalShell = require("./ModalShell.jsx");
+
+var _ModalShell2 = _interopRequireDefault(_ModalShell);
+
+var _InputField = require("./InputField.jsx");
+
+var _InputField2 = _interopRequireDefault(_InputField);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function PostTrialRatingModal(props) {
+    var _useState = (0, _react.useState)(props.initialValues || {}),
+        _useState2 = _slicedToArray(_useState, 2),
+        values = _useState2[0],
+        setValues = _useState2[1];
 
     (0, _react.useEffect)(function () {
-        var timerId = window.setInterval(function () {
-            setCursor(function (current) {
-                return current + 1;
-            });
-        }, PREVIEW_LOOP_MS);
-        return function cleanup() {
-            window.clearInterval(timerId);
-        };
-    }, []);
-    var frameIndex = cursor % props.frames.length;
-    var showPopup = props.showProbe && cursor % 4 !== 0;
-    var previewTrial = Object.assign({}, props.trial, {
-        show_target_highlight: Boolean(props.showHighlight)
+        setValues(props.initialValues || {});
+    }, [props.initialValues, props.trial.id]);
+
+    function update(field, event) {
+        var nextValues = Object.assign({}, values);
+        nextValues[field.id] = (0, _utils.fieldValueFromEvent)(field, event);
+        setValues(nextValues);
+    }
+
+    var complete = props.trial.post_trial_questions.every(function (question) {
+        return String(values[question.id] || "").trim();
     });
+
     return _react2.default.createElement(
-        "div",
-        { className: "mode-card" },
-        !props.hideCopy ? _react2.default.createElement(
-            "div",
-            { className: "mode-card__copy" },
-            _react2.default.createElement(
-                "h3",
-                null,
-                props.title
-            ),
-            props.description ? _react2.default.createElement(
-                "p",
-                null,
-                props.description
-            ) : null
-        ) : null,
+        _ModalShell2.default,
+        { open: props.open, eyebrow: "Trial rating", title: "How did this trial feel?" },
         _react2.default.createElement(
             "div",
-            { className: "mode-card__preview" },
-            props.previewBadge ? _react2.default.createElement(
+            { className: "panel-stack" },
+            props.trial.post_trial_questions.map(function (question) {
+                return _react2.default.createElement(_InputField2.default, {
+                    key: question.id,
+                    field: question,
+                    value: values[question.id] || "",
+                    onChange: function onChange(event) {
+                        return update(question, event);
+                    }
+                });
+            }),
+            _react2.default.createElement(
                 "div",
-                { className: "mode-card__badge" },
-                props.previewBadge
-            ) : null,
-            props.previewVisual ? _react2.default.createElement(
-                "div",
-                { className: "mode-card__asset" },
-                props.previewVisual
-            ) : null,
-            _react2.default.createElement(_board2.default, { layoutGrid: props.layoutGrid, state: props.frames[frameIndex], trial: previewTrial }),
-            showPopup ? _react2.default.createElement(LiveProbePreview, {
-                stepIndex: cursor,
-                title: props.probeTitle || "What do you expect next?",
-                layoutGrid: props.layoutGrid,
-                state: props.frames[frameIndex],
-                targetAgentIndex: props.trial.target_agent_index,
-                subtaskOptions: props.subtaskOptions
-            }) : null
+                { className: "stage-actions" },
+                _react2.default.createElement(
+                    "button",
+                    { className: "primary-button", type: "button", disabled: !complete, onClick: function onClick() {
+                            return props.onSubmit(values);
+                        } },
+                    "Save trial rating"
+                )
+            )
         )
     );
 }
 
-function LoopingBoardPreview(props) {
+},{"../utils.js":48,"./InputField.jsx":21,"./ModalShell.jsx":25,"react":8}],29:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+exports.default = ReplayTrialRunner;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _board = require("../spa/board.jsx");
+
+var _board2 = _interopRequireDefault(_board);
+
+var _expectation = require("../spa/expectation.jsx");
+
+var _expectation2 = _interopRequireDefault(_expectation);
+
+var _constants = require("../constants.js");
+
+var _utils = require("../utils.js");
+
+var _ModalShell = require("./ModalShell.jsx");
+
+var _ModalShell2 = _interopRequireDefault(_ModalShell);
+
+var _TrialStats = require("./TrialStats.jsx");
+
+var _TrialStats2 = _interopRequireDefault(_TrialStats);
+
+var _PostTrialRatingModal = require("./PostTrialRatingModal.jsx");
+
+var _PostTrialRatingModal2 = _interopRequireDefault(_PostTrialRatingModal);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function ReplayTrialRunner(props) {
+    var _useState = (0, _react.useState)(null),
+        _useState2 = _slicedToArray(_useState, 2),
+        trajectory = _useState2[0],
+        setTrajectory = _useState2[1];
+
+    var _useState3 = (0, _react.useState)(null),
+        _useState4 = _slicedToArray(_useState3, 2),
+        summary = _useState4[0],
+        setSummary = _useState4[1];
+
     var _useState5 = (0, _react.useState)(0),
         _useState6 = _slicedToArray(_useState5, 2),
         cursor = _useState6[0],
         setCursor = _useState6[1];
 
-    var frames = props.frames || [];
+    var _useState7 = (0, _react.useState)("booting"),
+        _useState8 = _slicedToArray(_useState7, 2),
+        phase = _useState8[0],
+        setPhase = _useState8[1];
+
+    var _useState9 = (0, _react.useState)(null),
+        _useState10 = _slicedToArray(_useState9, 2),
+        activeProbe = _useState10[0],
+        setActiveProbe = _useState10[1];
+
+    var _useState11 = (0, _react.useState)([]),
+        _useState12 = _slicedToArray(_useState11, 2),
+        probeResponses = _useState12[0],
+        setProbeResponses = _useState12[1];
+
+    var _useState13 = (0, _react.useState)(false),
+        _useState14 = _slicedToArray(_useState13, 2),
+        probeSubmitted = _useState14[0],
+        setProbeSubmitted = _useState14[1];
+
+    var _useState15 = (0, _react.useState)(0),
+        _useState16 = _slicedToArray(_useState15, 2),
+        probeDraftKey = _useState16[0],
+        setProbeDraftKey = _useState16[1];
+
+    var _useState17 = (0, _react.useState)(null),
+        _useState18 = _slicedToArray(_useState17, 2),
+        finishPayload = _useState18[0],
+        setFinishPayload = _useState18[1];
+
+    var _useState19 = (0, _react.useState)(""),
+        _useState20 = _slicedToArray(_useState19, 2),
+        error = _useState20[0],
+        setError = _useState20[1];
+
+    var finishingRef = (0, _react.useRef)(false);
+
     (0, _react.useEffect)(function () {
-        if (!frames.length) {
+        var mounted = true;
+        (0, _utils.apiPost)("/start_trial", {
+            user_info: props.userInfo,
+            trial_id: props.trial.id
+        }).then(function () {
+            if (!mounted) {
+                return;
+            }
+            if (props.cachedTrajectory) {
+                setTrajectory(props.cachedTrajectory.trajectory);
+                setSummary(props.cachedTrajectory.summary);
+                setPhase("playing");
+                return;
+            }
+            (0, _utils.apiPost)("/load_trial_trajectory", {
+                user_info: props.userInfo,
+                trial_id: props.trial.source_trial_id
+            }).then(function (response) {
+                if (!mounted) {
+                    return;
+                }
+                setTrajectory(response.trajectory);
+                setSummary(response.trial_record ? response.trial_record.trial_summary : null);
+                setPhase("playing");
+            });
+        }).catch(function (loadError) {
+            if (!mounted) {
+                return;
+            }
+            setError(String(loadError.message || loadError));
+            setPhase("error");
+        });
+        return function cleanup() {
+            mounted = false;
+        };
+    }, [props.trial.id, props.trial.source_trial_id, props.userInfo, props.cachedTrajectory]);
+
+    function getReplayProbePlan() {
+        var observations = trajectory && trajectory.ep_states ? trajectory.ep_states[0] || [] : [];
+        if (!observations.length) {
+            return [];
+        }
+        if (summary && summary.probes && summary.probes.length) {
+            return summary.probes.slice(0, props.trial.probe.count).map(function (probeRecord, index) {
+                return Object.assign({}, probeRecord, { probe_index: index + 1 });
+            });
+        }
+        return [1, 2, 3].map(function (value) {
+            return {
+                probe_index: value,
+                probe_game_loop: Math.max(1, Math.floor(observations.length * value / 4))
+            };
+        });
+    }
+
+    (0, _react.useEffect)(function () {
+        if (phase !== "playing" || !trajectory) {
             return undefined;
         }
+        var replayPlan = getReplayProbePlan();
+        var observations = trajectory.ep_states[0] || [];
         var timerId = window.setInterval(function () {
-            setCursor(function (current) {
-                return current + 1;
+            setCursor(function (previous) {
+                var nextProbe = replayPlan[probeResponses.length];
+                if (nextProbe && previous >= nextProbe.probe_game_loop) {
+                    setActiveProbe(nextProbe);
+                    setProbeSubmitted(false);
+                    setProbeDraftKey(function (current) {
+                        return current + 1;
+                    });
+                    setPhase("probe");
+                    return previous;
+                }
+                var next = previous + 1;
+                if (next >= observations.length) {
+                    window.clearInterval(timerId);
+                    setPhase("finishing");
+                    return previous;
+                }
+                return next;
             });
-        }, props.intervalMs || PREVIEW_LOOP_MS);
+        }, _constants.REPLAY_TIMESTEP_MS);
         return function cleanup() {
             window.clearInterval(timerId);
         };
-    }, [frames.length, props.intervalMs]);
-    var frameEntry = frames.length ? frames[cursor % frames.length] : null;
-    var currentState = frameEntry && frameEntry.state ? frameEntry.state : frameEntry;
-    var activeStepId = frameEntry && frameEntry.activeSubtaskId ? frameEntry.activeSubtaskId : "";
-    var previewTrial = Object.assign({}, props.trial || {}, {
-        show_target_highlight: Boolean(props.showHighlight)
-    });
+    }, [phase, trajectory, probeResponses.length]);
 
-    return _react2.default.createElement(
-        "div",
-        { className: "looping-board-preview" + (props.compact ? " is-compact" : "") },
-        _react2.default.createElement(
-            "div",
-            { className: "looping-board-preview__board" },
-            _react2.default.createElement(_board2.default, {
-                layoutGrid: props.layoutGrid,
-                state: currentState,
-                trial: previewTrial,
-                tileSize: props.tileSize || undefined
-            })
-        ),
-        props.steps && props.steps.length ? _react2.default.createElement(
-            "div",
-            { className: "looping-board-preview__steps" },
-            props.steps.map(function (step) {
-                return _react2.default.createElement(
-                    "div",
-                    {
-                        className: "looping-board-preview__step" + (step.id === activeStepId ? " is-active" : ""),
-                        key: step.id
-                    },
-                    step.label
-                );
-            })
-        ) : null,
-        props.caption ? _react2.default.createElement(
-            "p",
-            { className: "looping-board-preview__caption" },
-            props.caption
-        ) : null
-    );
-}
-
-function ModePlaybackCard(props) {
-    return _react2.default.createElement(
-        "div",
-        { className: "mode-card mode-card--playback" },
-        _react2.default.createElement(
-            "div",
-            { className: "mode-card__copy" },
-            _react2.default.createElement(
-                "h3",
-                null,
-                props.title
-            ),
-            _react2.default.createElement(
-                "p",
-                null,
-                props.description
-            )
-        ),
-        _react2.default.createElement(
-            "div",
-            { className: "mode-card__asset-stage mode-card__asset-stage--playback" },
-            _react2.default.createElement(LoopingBoardPreview, {
-                compact: true,
-                frames: props.frames,
-                layoutGrid: props.layoutGrid,
-                trial: props.trial,
-                caption: props.caption
-            })
-        )
-    );
-}
-
-function buildModeDemoFrames(layoutGrid) {
-    return {
-        observe: [buildMockState([makePlayer([8, 3], [0, -1]), makePlayer([4, 3], [1, 0])], [makeObject("tomato", [5, 1])], 0), buildMockState([makePlayer([8, 2], [0, -1]), makePlayer([5, 3], [1, 0])], [makeObject("tomato", [5, 1])], 1), buildMockState([makePlayer([8, 1], [-1, 0], makeObject("dish", [0, 0])), makePlayer([6, 3], [0, -1], makeObject("tomato", [0, 0]))], [], 2)],
-        collaborate: [buildMockState([makePlayer([4, 3], [1, 0], makeObject("tomato", [0, 0])), makePlayer([8, 3], [-1, 0])], [], 0), buildMockState([makePlayer([5, 3], [0, -1], makeObject("tomato", [0, 0])), makePlayer([8, 2], [-1, 0])], [], 1), buildMockState([makePlayer([6, 3], [0, -1]), makePlayer([8, 2], [-1, 0], makeObject("dish", [0, 0]))], [makeObject("soup", [6, 2], { _ingredients: [{ name: "tomato" }, { name: "tomato" }, { name: "tomato" }], is_cooking: true })], 2), buildMockState([makePlayer([7, 2], [-1, 0]), makePlayer([8, 2], [-1, 0], makeObject("dish", [0, 0]))], [makeObject("soup", [6, 2], { _ingredients: [{ name: "tomato" }, { name: "tomato" }, { name: "tomato" }], is_ready: true })], 3), buildMockState([makePlayer([7, 3], [1, 0]), makePlayer([10, 3], [-1, 0], makeObject("soup", [0, 0]))], [], 4)],
-        replay: [buildMockState([makePlayer([7, 2], [-1, 0]), makePlayer([8, 2], [-1, 0], makeObject("dish", [0, 0]))], [makeObject("soup", [6, 2], { _ingredients: [{ name: "tomato" }, { name: "tomato" }, { name: "tomato" }], is_ready: true })], 0), buildMockState([makePlayer([7, 2], [0, -1], makeObject("soup", [0, 0])), makePlayer([8, 2], [-1, 0])], [], 1), buildMockState([makePlayer([8, 2], [0, 1], makeObject("soup", [0, 0])), makePlayer([8, 3], [-1, 0])], [], 2), buildMockState([makePlayer([9, 3], [1, 0], makeObject("soup", [0, 0])), makePlayer([8, 3], [-1, 0])], [], 3), buildMockState([makePlayer([10, 3], [1, 0]), makePlayer([8, 3], [1, 0])], [], 4)]
-    };
-}
-
-function buildTutorialLoopFrames(layoutGrid) {
-    return [{
-        state: buildMockState([makePlayer([4, 3], [1, 0], makeObject("tomato", [0, 0])), makePlayer([8, 3], [-1, 0])], [], 0),
-        activeSubtaskId: "collect_tomato"
-    }, {
-        state: buildMockState([makePlayer([5, 3], [0, -1], makeObject("tomato", [0, 0])), makePlayer([8, 3], [-1, 0])], [], 1),
-        activeSubtaskId: "load_pot"
-    }, {
-        state: buildMockState([makePlayer([6, 3], [0, -1]), makePlayer([8, 2], [-1, 0])], [makeObject("soup", [6, 2], { _ingredients: [{ name: "tomato" }, { name: "tomato" }, { name: "tomato" }], is_cooking: true })], 2),
-        activeSubtaskId: "manage_pot"
-    }, {
-        state: buildMockState([makePlayer([7, 2], [-1, 0]), makePlayer([8, 2], [-1, 0], makeObject("dish", [0, 0]))], [makeObject("soup", [6, 2], { _ingredients: [{ name: "tomato" }, { name: "tomato" }, { name: "tomato" }], is_ready: true })], 3),
-        activeSubtaskId: "pickup_soup"
-    }, {
-        state: buildMockState([makePlayer([7, 3], [1, 0]), makePlayer([10, 3], [-1, 0], makeObject("soup", [0, 0]))], [], 4),
-        activeSubtaskId: "serve_soup"
-    }];
-}
-
-function ObserveSceneAsset() {
-    return _react2.default.createElement(
-        "div",
-        { className: "mode-scene mode-scene--observe" },
-        _react2.default.createElement(
-            "div",
-            { className: "mode-scene__spotlight" },
-            _react2.default.createElement(ChefVisual, { hatColor: "orange", size: 60 })
-        ),
-        _react2.default.createElement("div", { className: "mode-scene__connector" }),
-        _react2.default.createElement(
-            "div",
-            { className: "mode-scene__stack" },
-            _react2.default.createElement(
-                "div",
-                { className: "mode-scene__pair" },
-                _react2.default.createElement(AtlasSprite, { atlas: _atlas.OBJECTS_ATLAS, imageUrl: _atlas.OBJECTS_IMAGE_URL, frameName: "tomato.png", size: 42, className: "mini-sprite" }),
-                _react2.default.createElement(AtlasSprite, { atlas: _atlas.OBJECTS_ATLAS, imageUrl: _atlas.OBJECTS_IMAGE_URL, frameName: "dish.png", size: 42, className: "mini-sprite" }),
-                _react2.default.createElement(AtlasSprite, { atlas: _atlas.OBJECTS_ATLAS, imageUrl: _atlas.OBJECTS_IMAGE_URL, frameName: "soup-tomato-dish.png", size: 42, className: "mini-sprite" })
-            ),
-            _react2.default.createElement(
-                "div",
-                { className: "mode-scene__caption" },
-                "Watch the AI chef."
-            )
-        )
-    );
-}
-
-function CollaborateSceneAsset() {
-    return _react2.default.createElement(
-        "div",
-        { className: "mode-scene mode-scene--collaborate" },
-        _react2.default.createElement(
-            "div",
-            { className: "mode-scene__pair" },
-            _react2.default.createElement(ChefVisual, { hatColor: "gray", size: 58 }),
-            _react2.default.createElement(
-                "div",
-                { className: "mode-scene__plus" },
-                "+"
-            ),
-            _react2.default.createElement(ChefVisual, { hatColor: "orange", size: 58 })
-        ),
-        _react2.default.createElement(
-            "div",
-            { className: "mode-scene__pair" },
-            _react2.default.createElement(IngredientStrip, { ingredients: ["tomato", "tomato", "onion"] }),
-            _react2.default.createElement(AtlasSprite, { atlas: _atlas.OBJECTS_ATLAS, imageUrl: _atlas.OBJECTS_IMAGE_URL, frameName: "soup-tomato-dish.png", size: 46, className: "mini-sprite" })
-        ),
-        _react2.default.createElement(
-            "div",
-            { className: "mode-scene__caption" },
-            "Cook side by side with the AI chef."
-        )
-    );
-}
-
-function ReplaySceneAsset() {
-    return _react2.default.createElement(
-        "div",
-        { className: "mode-scene mode-scene--replay" },
-        _react2.default.createElement(
-            "div",
-            { className: "mode-scene__pair" },
-            _react2.default.createElement(ChefVisual, { hatColor: "gray", size: 56 }),
-            _react2.default.createElement(
-                "div",
-                { className: "mode-scene__rewind" },
-                "\u21BA"
-            ),
-            _react2.default.createElement(ChefVisual, { hatColor: "orange", size: 56 })
-        ),
-        _react2.default.createElement(
-            "div",
-            { className: "mode-scene__path" },
-            _react2.default.createElement("span", null),
-            _react2.default.createElement("span", null),
-            _react2.default.createElement("span", null),
-            _react2.default.createElement("span", null)
-        ),
-        _react2.default.createElement(
-            "div",
-            { className: "mode-scene__caption" },
-            "Replay the collaborated scene and annotate what you expected."
-        )
-    );
-}
-
-function ModeAssetCard(props) {
-    return _react2.default.createElement(
-        "div",
-        { className: "mode-card mode-card--asset-only" },
-        _react2.default.createElement(
-            "div",
-            { className: "mode-card__copy" },
-            _react2.default.createElement(
-                "h3",
-                null,
-                props.title
-            ),
-            _react2.default.createElement(
-                "p",
-                null,
-                props.description
-            )
-        ),
-        _react2.default.createElement(
-            "div",
-            { className: "mode-card__asset-stage" },
-            props.asset
-        )
-    );
-}
-
-function WelcomeStage(props) {
-    var demos = (0, _react.useMemo)(function () {
-        return buildModeDemoFrames(props.session.layout_grid);
-    }, [props.session.layout_grid]);
-    var observeTrial = props.session.trials.observe_1 || props.session.trials.tutorial_team;
-    return _react2.default.createElement(
-        "div",
-        { className: "stage-stack" },
-        _react2.default.createElement(
-            "div",
-            { className: "hero-task-grid" },
-            _react2.default.createElement(
-                "div",
-                { className: "hero-task-card" },
-                _react2.default.createElement(
-                    "div",
-                    { className: "hero-task-card__preview" },
-                    _react2.default.createElement(ObserveHeroPreview, {
-                        frames: demos.observe,
-                        layoutGrid: props.session.layout_grid,
-                        trial: observeTrial,
-                        subtaskOptions: props.session.subtask_options,
-                        showProbe: false,
-                        tileSize: 48
-                    })
-                ),
-                _react2.default.createElement(
-                    "h3",
-                    null,
-                    "Cook with a AI chef"
-                ),
-                _react2.default.createElement(
-                    "p",
-                    null,
-                    "Cook onion/tomato soup and deliver it with a AI chef"
-                )
-            ),
-            _react2.default.createElement(
-                "div",
-                { className: "hero-task-card" },
-                _react2.default.createElement(
-                    "div",
-                    { className: "hero-task-card__preview" },
-                    _react2.default.createElement(ObserveHeroPreview, {
-                        frames: demos.observe,
-                        layoutGrid: props.session.layout_grid,
-                        trial: observeTrial,
-                        subtaskOptions: props.session.subtask_options,
-                        showProbe: true
-                    })
-                ),
-                _react2.default.createElement(
-                    "h3",
-                    null,
-                    "Submit your expected strategy of the AI chef"
-                ),
-                _react2.default.createElement(
-                    "p",
-                    null,
-                    "Choose the subtask you expect for the AI chef and sketch the route"
-                )
-            )
-        ),
-        _react2.default.createElement(
-            "div",
-            { className: "stage-actions" },
-            _react2.default.createElement(
-                "button",
-                { className: "primary-button", type: "button", onClick: function onClick() {
-                        return props.onContinue({ seen: true });
-                    } },
-                "Start briefing"
-            )
-        )
-    );
-}
-
-function ModeOverviewStage(props) {
-    var demos = (0, _react.useMemo)(function () {
-        return buildModeDemoFrames(props.session.layout_grid);
-    }, [props.session.layout_grid]);
-    var collaborateTrial = props.session.trials.collaborate_1 || props.session.trials.tutorial_team || props.session.trials.observe_1;
-    var replayTrial = props.session.trials.replay_1 || collaborateTrial;
-    return _react2.default.createElement(
-        "div",
-        { className: "stage-stack" },
-        _react2.default.createElement(
-            "div",
-            { className: "mode-grid" },
-            _react2.default.createElement(ModePlaybackCard, {
-                title: "Collaborate",
-                description: "Cook with the AI chef and answer the probe.",
-                layoutGrid: props.session.layout_grid,
-                frames: demos.collaborate,
-                trial: collaborateTrial,
-                caption: "Live play"
-            }),
-            _react2.default.createElement(ModePlaybackCard, {
-                title: "Replay + Annotation",
-                description: "Replay the recent scene and annotate what you expected.",
-                layoutGrid: props.session.layout_grid,
-                frames: demos.replay,
-                trial: replayTrial,
-                caption: "Replay"
-            })
-        ),
-        _react2.default.createElement(
-            "div",
-            { className: "stage-actions" },
-            _react2.default.createElement(
-                "button",
-                { className: "primary-button", type: "button", onClick: function onClick() {
-                        return props.onContinue({ reviewed_modes: true });
-                    } },
-                "Continue"
-            )
-        )
-    );
-}
-
-function ConsentStage(props) {
-    var initialValues = {};
-    props.intakeForm.sections.forEach(function (section) {
-        section.fields.forEach(function (field) {
-            initialValues[field.id] = props.userInfo && Object.prototype.hasOwnProperty.call(props.userInfo, field.id) ? normalizeChoiceValue(props.userInfo[field.id]) : "";
-        });
-    });
-    initialValues.consent = false;
-
-    var _useState7 = (0, _react.useState)(initialValues),
-        _useState8 = _slicedToArray(_useState7, 2),
-        values = _useState8[0],
-        setValues = _useState8[1];
-
-    var _useState9 = (0, _react.useState)(false),
-        _useState10 = _slicedToArray(_useState9, 2),
-        submitting = _useState10[0],
-        setSubmitting = _useState10[1];
-
-    var _useState11 = (0, _react.useState)(""),
-        _useState12 = _slicedToArray(_useState11, 2),
-        error = _useState12[0],
-        setError = _useState12[1];
-
-    function updateField(field, event) {
-        var nextValues = Object.assign({}, values);
-        nextValues[field.id] = fieldValueFromEvent(field, event);
-        setValues(nextValues);
-        setError("");
-    }
-
-    function submit() {
-        var missing = [];
-        props.intakeForm.sections.forEach(function (section) {
-            section.fields.forEach(function (field) {
-                if (field.required && !hasValue(values[field.id])) {
-                    missing.push(field.label);
-                }
-            });
-        });
-        if (!values.consent) {
-            missing.push("Consent");
-        }
-        if (missing.length) {
-            setError("Please complete all required items.");
+    (0, _react.useEffect)(function () {
+        if (phase !== "finishing" || finishingRef.current || !summary) {
             return;
         }
-        setError("");
-        setSubmitting(true);
-        apiPost("/create_questionnaire_before_game", values).then(function () {
-            writeJsonStorage("before_game", values);
-            return Promise.resolve(props.onSubmit(values));
-        }).catch(function (submitError) {
-            setSubmitting(false);
-            setError(String(submitError.message || submitError));
+        finishingRef.current = true;
+        var summaryPayload = {
+            source_trial_id: props.trial.source_trial_id,
+            source_summary: summary,
+            replay_expectations: probeResponses
+        };
+        (0, _utils.apiPost)("/save_trial_data", {
+            user_info: props.userInfo,
+            trial_id: props.trial.id,
+            updates: summaryPayload
+        }).then(function () {
+            return (0, _utils.apiPost)("/finish_episode", {
+                user_info: props.userInfo,
+                trial_id: props.trial.id,
+                traj_id: (0, _utils.makeTrajId)(props.trial.id),
+                summary: summaryPayload
+            });
+        }).then(function (payload) {
+            setFinishPayload(payload);
+            setPhase("rating");
+        }).catch(function (finishError) {
+            setError(String(finishError.message || finishError));
+            setPhase("error");
+        });
+    }, [phase, props.trial.id, props.trial.source_trial_id, props.userInfo, probeResponses, summary]);
+
+    function submitReplayProbe(expectation) {
+        var record = {
+            probe_index: activeProbe ? activeProbe.probe_index : probeResponses.length + 1,
+            source_probe_game_loop: activeProbe ? activeProbe.probe_game_loop : cursor,
+            source_actual_subtask_id: activeProbe ? activeProbe.actual_subtask_id : null,
+            source_actual_subtask_label: activeProbe ? activeProbe.actual_subtask_label : null,
+            selected_subtask_id: expectation.selectedSubtaskId,
+            expected_path: expectation.expectedPath,
+            confidence: expectation.confidence,
+            response_timestamp: Date.now()
+        };
+        setProbeResponses(function (current) {
+            return current.concat([record]);
+        });
+        setProbeSubmitted(true);
+    }
+
+    function resumeAfterReplayProbe() {
+        setActiveProbe(null);
+        setProbeSubmitted(false);
+        setPhase("playing");
+    }
+
+    function submitTrialRating(values) {
+        var mergedSummary = Object.assign({}, finishPayload.trial_summary, { post_trial_rating: values });
+        (0, _utils.apiPost)("/save_trial_data", {
+            user_info: props.userInfo,
+            trial_id: props.trial.id,
+            updates: { post_trial_rating: values, trial_summary: mergedSummary }
+        }).then(function () {
+            props.onComplete(mergedSummary, null);
+        }).catch(function (ratingError) {
+            setError(String(ratingError.message || ratingError));
+            setPhase("error");
         });
     }
+
+    var activeState = trajectory && trajectory.ep_states && trajectory.ep_states[0] ? trajectory.ep_states[0][cursor] : null;
 
     return _react2.default.createElement(
         "div",
-        { className: "stage-stack" },
+        { className: "trial-screen" },
         _react2.default.createElement(
             "section",
-            { className: "panel-card panel-card--scroll" },
+            { className: "panel-card panel-card--board" },
             _react2.default.createElement(
                 "div",
-                { className: "panel-stack" },
-                props.intakeForm.sections.map(function (section) {
-                    return _react2.default.createElement(
-                        "div",
-                        { className: "section-block", key: section.id },
-                        _react2.default.createElement(
-                            "div",
-                            { className: "section-block__title" },
-                            section.title
-                        ),
-                        section.fields.map(function (field) {
-                            return _react2.default.createElement(InputField, { key: field.id, field: field, value: values[field.id], onChange: function onChange(event) {
-                                    return updateField(field, event);
-                                } });
-                        })
-                    );
-                }),
+                { className: "trial-hero" },
                 _react2.default.createElement(
-                    "label",
-                    { className: "toggle-card" + (values.consent ? " is-selected" : "") },
-                    _react2.default.createElement("input", {
-                        type: "checkbox",
-                        checked: Boolean(values.consent),
-                        onChange: function onChange() {
-                            setValues(Object.assign({}, values, { consent: !values.consent }));
-                            setError("");
-                        }
-                    }),
-                    _react2.default.createElement(
-                        "span",
-                        { className: "toggle-card__check" + (values.consent ? " is-checked" : "") },
-                        values.consent ? "✓" : ""
-                    ),
-                    _react2.default.createElement(
-                        "span",
-                        null,
-                        "I agree to participate in this study."
-                    )
+                    "div",
+                    { className: "panel-eyebrow" },
+                    props.trial.title
                 ),
-                error ? _react2.default.createElement(
-                    "div",
-                    { className: "callout callout--danger" },
-                    error
-                ) : null,
                 _react2.default.createElement(
-                    "div",
-                    { className: "stage-actions" },
-                    _react2.default.createElement(
-                        "button",
-                        { className: "primary-button", type: "button", disabled: submitting, onClick: submit },
-                        submitting ? "Saving..." : "Continue"
-                    )
+                    "h3",
+                    null,
+                    "Replay the earlier scene"
+                ),
+                _react2.default.createElement(
+                    "p",
+                    null,
+                    props.trial.instruction
                 )
-            )
-        )
-    );
-}
-
-function OnboardingStage(props) {
-    var guideSteps = [{ id: "move", title: "Move", body: "Use the arrow keys to move your chef." }, { id: "interact", title: "Interact", body: "Press the space bar to pick up, place, plate, or serve the object (tomato, onion, dish, soup)." }, { id: "probe", title: "Probe", body: "When a probe appears, choose the AI chef's next subtask, draw the route, and rate your confidence." }];
-    var previewSteps = [{ id: "collect_tomato", label: "Collect tomato" }, { id: "load_pot", label: "Load pot" }, { id: "manage_pot", label: "Manage pot" }, { id: "pickup_soup", label: "Pick up soup" }, { id: "serve_soup", label: "Serve soup" }];
-    var demoFrames = (0, _react.useMemo)(function () {
-        return buildTutorialLoopFrames(props.session.layout_grid);
-    }, [props.session.layout_grid]);
-    var probeFrames = (0, _react.useMemo)(function () {
-        return demoFrames.map(function (frame) {
-            return frame.state;
-        });
-    }, [demoFrames]);
-
-    var _useState13 = (0, _react.useState)(-1),
-        _useState14 = _slicedToArray(_useState13, 2),
-        guideIndex = _useState14[0],
-        setGuideIndex = _useState14[1];
-
-    var activeGuide = guideSteps[guideIndex] || null;
-
-    function openGuide() {
-        setGuideIndex(0);
-    }
-
-    function finishOnboarding() {
-        props.onContinue({
-            reviewed_tutorial: true
-        });
-    }
-
-    return _react2.default.createElement(
-        "div",
-        { className: "stage-stack" },
-        _react2.default.createElement(
-            "section",
-            { className: "panel-card" },
-            _react2.default.createElement(
+            ),
+            _react2.default.createElement(_TrialStats2.default, { runtime: {
+                    score: summary ? summary.score : 0,
+                    time_left: trajectory && trajectory.ep_states ? Math.max((trajectory.ep_states[0] || []).length - cursor, 0) : 0,
+                    step_count: cursor,
+                    probe_records: probeResponses
+                } }),
+            _react2.default.createElement(_board2.default, {
+                layoutGrid: props.trial.layout_grid,
+                state: activeState,
+                trial: Object.assign({}, props.trial, { show_target_highlight: true })
+            }),
+            phase === "playing" ? _react2.default.createElement(
                 "div",
-                { className: "panel-stack" },
-                _react2.default.createElement(
-                    "div",
-                    { className: "tutorial-preview-shell" },
-                    _react2.default.createElement(
-                        "div",
-                        { className: "tutorial-preview-shell__header" },
-                        _react2.default.createElement(
-                            "div",
-                            null,
-                            _react2.default.createElement(
-                                "div",
-                                { className: "panel-eyebrow" },
-                                "Before practice"
-                            ),
-                            _react2.default.createElement(
-                                "h3",
-                                null,
-                                "Watch one full cooking loop"
-                            )
-                        ),
-                        _react2.default.createElement(
-                            "p",
-                            null,
-                            "The active subtask lights up as the team moves through the recipe."
-                        )
-                    ),
-                    _react2.default.createElement(LoopingBoardPreview, {
-                        frames: demoFrames,
-                        steps: previewSteps,
-                        layoutGrid: props.session.layout_grid,
-                        trial: { human_player_index: 1, target_agent_index: 0, show_target_highlight: false },
-                        caption: "Gray chef: you. Orange chef: AI teammate."
-                    }),
-                    _react2.default.createElement(
-                        "div",
-                        { className: "key-row" },
-                        _react2.default.createElement(
-                            "div",
-                            { className: "key-chip" },
-                            "Arrow keys: move"
-                        ),
-                        _react2.default.createElement(
-                            "div",
-                            { className: "key-chip" },
-                            "Space: interact"
-                        )
-                    )
-                ),
-                _react2.default.createElement(
-                    "div",
-                    { className: "stage-actions" },
-                    _react2.default.createElement(
-                        "button",
-                        { className: "primary-button", type: "button", onClick: openGuide },
-                        "Next"
-                    )
-                )
-            )
+                { className: "callout" },
+                "Watch the replay. It will pause three times and ask what you expected."
+            ) : null,
+            error ? _react2.default.createElement(
+                "div",
+                { className: "callout callout--danger" },
+                error
+            ) : null
         ),
         _react2.default.createElement(
-            ModalShell,
-            { open: guideIndex >= 0 && guideIndex < guideSteps.length, eyebrow: "Tutorial", title: activeGuide ? activeGuide.title : "Tutorial" },
-            _react2.default.createElement(
+            _ModalShell2.default,
+            { open: phase === "probe", eyebrow: "Replay probe", title: probeSubmitted ? "Expectation saved" : "What did you expect here?" },
+            !probeSubmitted ? _react2.default.createElement(_expectation2.default, {
+                key: "replay-probe-" + probeDraftKey,
+                title: "Report what you expected from the AI chef at this moment",
+                probeIndex: activeProbe ? activeProbe.probe_index : probeResponses.length + 1,
+                probeTotal: props.trial.probe.count,
+                prompt: props.trial.probe.prompt,
+                sketchPrompt: props.trial.probe.sketch_prompt,
+                confidencePrompt: props.trial.probe.confidence_prompt,
+                subtaskOptions: props.subtaskOptions,
+                layoutGrid: props.trial.layout_grid,
+                state: activeState,
+                targetAgentIndex: props.trial.target_agent_index,
+                onSubmit: submitReplayProbe
+            }) : _react2.default.createElement(
                 "div",
                 { className: "panel-stack" },
                 _react2.default.createElement(
                     "p",
                     null,
-                    activeGuide ? activeGuide.body : ""
-                ),
-                _react2.default.createElement(
-                    "div",
-                    { className: "guide-visual" + (activeGuide && activeGuide.id === "probe" ? " guide-visual--board" : "") },
-                    activeGuide && activeGuide.id === "move" ? _react2.default.createElement(
-                        "div",
-                        { className: "key-demo" },
-                        _react2.default.createElement(
-                            "div",
-                            { className: "keycap" },
-                            "\u2191"
-                        ),
-                        _react2.default.createElement(
-                            "div",
-                            { className: "keycap" },
-                            "\u2190"
-                        ),
-                        _react2.default.createElement(
-                            "div",
-                            { className: "keycap" },
-                            "\u2193"
-                        ),
-                        _react2.default.createElement(
-                            "div",
-                            { className: "keycap" },
-                            "\u2192"
-                        )
-                    ) : null,
-                    activeGuide && activeGuide.id === "interact" ? _react2.default.createElement(
-                        "div",
-                        { className: "guide-visual__interact" },
-                        _react2.default.createElement(
-                            "div",
-                            { className: "key-demo" },
-                            _react2.default.createElement(
-                                "div",
-                                { className: "keycap" },
-                                "Space"
-                            )
-                        ),
-                        _react2.default.createElement(
-                            "div",
-                            { className: "ingredient-strip" },
-                            _react2.default.createElement(AtlasSprite, { atlas: _atlas.OBJECTS_ATLAS, imageUrl: _atlas.OBJECTS_IMAGE_URL, frameName: "tomato.png", size: 34, className: "mini-sprite" }),
-                            _react2.default.createElement(AtlasSprite, { atlas: _atlas.OBJECTS_ATLAS, imageUrl: _atlas.OBJECTS_IMAGE_URL, frameName: "onion.png", size: 34, className: "mini-sprite" }),
-                            _react2.default.createElement(AtlasSprite, { atlas: _atlas.OBJECTS_ATLAS, imageUrl: _atlas.OBJECTS_IMAGE_URL, frameName: "dish.png", size: 34, className: "mini-sprite" }),
-                            _react2.default.createElement(AtlasSprite, { atlas: _atlas.OBJECTS_ATLAS, imageUrl: _atlas.OBJECTS_IMAGE_URL, frameName: "soup-tomato-dish.png", size: 34, className: "mini-sprite" })
-                        )
-                    ) : null,
-                    activeGuide && activeGuide.id === "probe" ? _react2.default.createElement(ObserveHeroPreview, {
-                        frames: probeFrames,
-                        layoutGrid: props.session.layout_grid,
-                        trial: { human_player_index: 1, target_agent_index: 0, probe: { count: 3, prompt: "What do you expect from the AI chef?", sketch_prompt: "Sketch the route you expected.", confidence_prompt: "How confident are you?" }, show_target_highlight: false },
-                        subtaskOptions: props.session.subtask_options,
-                        showProbe: true
-                    }) : null
+                    "Your expectation was saved. Resume replay to compare it with the actual continuation."
                 ),
                 _react2.default.createElement(
                     "div",
                     { className: "stage-actions" },
-                    guideIndex < guideSteps.length - 1 ? _react2.default.createElement(
+                    _react2.default.createElement(
                         "button",
-                        { className: "primary-button", type: "button", onClick: function onClick() {
-                                return setGuideIndex(guideIndex + 1);
-                            } },
-                        "Next"
-                    ) : _react2.default.createElement(
-                        "button",
-                        { className: "primary-button", type: "button", onClick: finishOnboarding },
-                        "Start tutorial"
+                        { className: "primary-button", type: "button", onClick: resumeAfterReplayProbe },
+                        "Resume replay"
                     )
                 )
+            )
+        ),
+        _react2.default.createElement(_PostTrialRatingModal2.default, {
+            open: phase === "rating" && Boolean(finishPayload),
+            trial: props.trial,
+            initialValues: {},
+            onSubmit: submitTrialRating
+        })
+    );
+}
+
+},{"../constants.js":33,"../spa/board.jsx":37,"../spa/expectation.jsx":38,"../utils.js":48,"./ModalShell.jsx":25,"./PostTrialRatingModal.jsx":28,"./TrialStats.jsx":32,"react":8}],30:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = StageHeader;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _utils = require("../utils.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function StageHeader(props) {
+    var heading = (0, _utils.splitStageHeading)(props.stage);
+    var body = props.stage && props.stage.body && props.stage.body.length ? props.stage.body[0] : props.stage && props.stage.type === "survey" ? "Answer a few short questions, then continue." : "Continue when you are ready.";
+    return _react2.default.createElement(
+        "header",
+        { className: "stage-header" },
+        _react2.default.createElement(
+            "div",
+            null,
+            heading.eyebrow ? _react2.default.createElement(
+                "div",
+                { className: "panel-eyebrow" },
+                heading.eyebrow
+            ) : null,
+            _react2.default.createElement(
+                "h2",
+                null,
+                heading.title
+            ),
+            _react2.default.createElement(
+                "p",
+                null,
+                body
             )
         )
     );
 }
+
+},{"../utils.js":48,"react":8}],31:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = TopProgress;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function TopProgress(props) {
+    return _react2.default.createElement(
+        "section",
+        { className: "app-rail" },
+        _react2.default.createElement(
+            "div",
+            { className: "app-rail__header" },
+            _react2.default.createElement(
+                "div",
+                { className: "brand-block" },
+                _react2.default.createElement(
+                    "div",
+                    { className: "brand-badge" },
+                    "AI"
+                ),
+                _react2.default.createElement(
+                    "div",
+                    null,
+                    _react2.default.createElement(
+                        "h1",
+                        null,
+                        props.session.title
+                    ),
+                    _react2.default.createElement(
+                        "p",
+                        null,
+                        props.session.subtitle
+                    )
+                )
+            )
+        ),
+        _react2.default.createElement(
+            "div",
+            {
+                className: "stage-progress",
+                style: { gridTemplateColumns: "repeat(" + String(props.session.stages.length) + ", minmax(0, 1fr))" }
+            },
+            props.session.stages.map(function (stage, index) {
+                var isComplete = props.runnerState.completedStages.indexOf(stage.id) >= 0;
+                var isCurrent = props.runnerState.stageIndex === index;
+                return _react2.default.createElement("div", {
+                    className: "stage-progress__segment" + (isCurrent ? " is-current" : "") + (isComplete ? " is-complete" : ""),
+                    key: stage.id
+                });
+            })
+        )
+    );
+}
+
+},{"react":8}],32:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = TrialStats;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function TrialStats(props) {
     var runtime = props.runtime || {};
@@ -33636,50 +33597,56 @@ function TrialStats(props) {
     );
 }
 
-function PostTrialRatingModal(props) {
-    var _useState15 = (0, _react.useState)(props.initialValues || {}),
-        _useState16 = _slicedToArray(_useState15, 2),
-        values = _useState16[0],
-        setValues = _useState16[1];
+},{"react":8}],33:[function(require,module,exports){
+"use strict";
 
-    (0, _react.useEffect)(function () {
-        setValues(props.initialValues || {});
-    }, [props.initialValues, props.trial.id]);
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var TIMESTEP_MS = exports.TIMESTEP_MS = 220;
+var PREVIEW_LOOP_MS = exports.PREVIEW_LOOP_MS = 1280;
+var REPLAY_TIMESTEP_MS = exports.REPLAY_TIMESTEP_MS = 260;
+var DEFAULT_ACTION_IDX = exports.DEFAULT_ACTION_IDX = 4;
 
-    function update(field, event) {
-        var nextValues = Object.assign({}, values);
-        nextValues[field.id] = fieldValueFromEvent(field, event);
-        setValues(nextValues);
-    }
+var DIRECTION_KEY_CODES = exports.DIRECTION_KEY_CODES = {
+    37: 3,
+    38: 0,
+    39: 2,
+    40: 1,
+    65: 3,
+    68: 2,
+    83: 1,
+    87: 0
+};
 
-    var complete = props.trial.post_trial_questions.every(function (question) {
-        return String(values[question.id] || "").trim();
-    });
-    return _react2.default.createElement(
-        ModalShell,
-        { open: props.open, eyebrow: "Trial rating", title: "How did this trial feel?" },
-        _react2.default.createElement(
-            "div",
-            { className: "panel-stack" },
-            props.trial.post_trial_questions.map(function (question) {
-                return _react2.default.createElement(InputField, { key: question.id, field: question, value: values[question.id] || "", onChange: function onChange(event) {
-                        return update(question, event);
-                    } });
-            }),
-            _react2.default.createElement(
-                "div",
-                { className: "stage-actions" },
-                _react2.default.createElement(
-                    "button",
-                    { className: "primary-button", type: "button", disabled: !complete, onClick: function onClick() {
-                            return props.onSubmit(values);
-                        } },
-                    "Save trial rating"
-                )
-            )
-        )
-    );
-}
+var INTERACT_KEY_CODES = exports.INTERACT_KEY_CODES = {
+    13: true,
+    32: true
+};
+
+var TERRAIN_SYMBOL_MAP = exports.TERRAIN_SYMBOL_MAP = {
+    X: { cssClass: "counter", label: "Counter", frame: "counter.png" },
+    O: { cssClass: "onion", label: "Onion", frame: "onions.png" },
+    T: { cssClass: "tomato", label: "Tomato", frame: "tomatoes.png" },
+    D: { cssClass: "dish", label: "Dish", frame: "dishes.png" },
+    P: { cssClass: "pot", label: "Pot", frame: "pot.png" },
+    S: { cssClass: "serve", label: "Serve", frame: "serve.png" }
+};
+var DEFAULT_TERRAIN = exports.DEFAULT_TERRAIN = { cssClass: "floor", label: "", frame: "floor.png" };
+
+},{}],34:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = useBufferedInput;
+
+var _react = require("react");
+
+var _constants = require("../constants.js");
+
+var _utils = require("../utils.js");
 
 function useBufferedInput(enabled) {
     var heldDirectionsRef = (0, _react.useRef)([]);
@@ -33694,23 +33661,23 @@ function useBufferedInput(enabled) {
             interactBufferRef.current = 0;
         }
         function onKeyDown(event) {
-            var directionAction = DIRECTION_KEY_CODES[event.which];
+            var directionAction = _constants.DIRECTION_KEY_CODES[event.which];
             if (directionAction !== undefined) {
-                heldDirectionsRef.current = removeValue(heldDirectionsRef.current, directionAction).concat([directionAction]);
+                heldDirectionsRef.current = (0, _utils.removeValue)(heldDirectionsRef.current, directionAction).concat([directionAction]);
                 event.preventDefault();
                 return;
             }
-            if (INTERACT_KEY_CODES[event.which]) {
+            if (_constants.INTERACT_KEY_CODES[event.which]) {
                 interactBufferRef.current = Math.min(interactBufferRef.current + 2, 4);
                 event.preventDefault();
             }
         }
         function onKeyUp(event) {
-            var directionAction = DIRECTION_KEY_CODES[event.which];
+            var directionAction = _constants.DIRECTION_KEY_CODES[event.which];
             if (directionAction === undefined) {
                 return;
             }
-            heldDirectionsRef.current = removeValue(heldDirectionsRef.current, directionAction);
+            heldDirectionsRef.current = (0, _utils.removeValue)(heldDirectionsRef.current, directionAction);
         }
         document.addEventListener("keydown", onKeyDown);
         document.addEventListener("keyup", onKeyUp);
@@ -33730,1230 +33697,99 @@ function useBufferedInput(enabled) {
         if (heldDirectionsRef.current.length) {
             return heldDirectionsRef.current[heldDirectionsRef.current.length - 1];
         }
-        return DEFAULT_ACTION_IDX;
+        return _constants.DEFAULT_ACTION_IDX;
     }
 
-    return {
-        consumeAction: consumeAction
-    };
+    return { consumeAction: consumeAction };
 }
 
-function InteractiveTrialRunner(props) {
-    var _useState17 = (0, _react.useState)(null),
-        _useState18 = _slicedToArray(_useState17, 2),
-        runtime = _useState18[0],
-        setRuntime = _useState18[1];
+},{"../constants.js":33,"../utils.js":48,"react":8}],35:[function(require,module,exports){
+"use strict";
 
-    var _useState19 = (0, _react.useState)("booting"),
-        _useState20 = _slicedToArray(_useState19, 2),
-        status = _useState20[0],
-        setStatus = _useState20[1];
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
-    var _useState21 = (0, _react.useState)(""),
-        _useState22 = _slicedToArray(_useState21, 2),
-        error = _useState22[0],
-        setError = _useState22[1];
+var _react = require("react");
 
-    var _useState23 = (0, _react.useState)(null),
-        _useState24 = _slicedToArray(_useState23, 2),
-        probe = _useState24[0],
-        setProbe = _useState24[1];
+var _react2 = _interopRequireDefault(_react);
 
-    var _useState25 = (0, _react.useState)(false),
-        _useState26 = _slicedToArray(_useState25, 2),
-        probeSubmitted = _useState26[0],
-        setProbeSubmitted = _useState26[1];
+var _reactDom = require("react-dom");
 
-    var _useState27 = (0, _react.useState)(0),
-        _useState28 = _slicedToArray(_useState27, 2),
-        probeDraftKey = _useState28[0],
-        setProbeDraftKey = _useState28[1];
+var _reactDom2 = _interopRequireDefault(_reactDom);
 
-    var _useState29 = (0, _react.useState)(null),
-        _useState30 = _slicedToArray(_useState29, 2),
-        finishPayload = _useState30[0],
-        setFinishPayload = _useState30[1];
+var _utils = require("./utils.js");
 
-    var statusRef = (0, _react.useRef)("booting");
-    var input = useBufferedInput(props.trial.human_player_index !== null && props.trial.human_player_index !== undefined);
+var _TopProgress = require("./components/TopProgress.jsx");
 
-    (0, _react.useEffect)(function () {
-        statusRef.current = status;
-    }, [status]);
+var _TopProgress2 = _interopRequireDefault(_TopProgress);
 
-    (0, _react.useEffect)(function () {
-        var mounted = true;
-        apiPost("/start_trial", {
-            user_info: props.userInfo,
-            trial_id: props.trial.id
-        }).then(function (startPayload) {
-            if (!mounted) {
-                return;
-            }
-            setRuntime(startPayload.runtime);
-            setStatus("running");
-        }).catch(function (startError) {
-            if (!mounted) {
-                return;
-            }
-            setError(String(startError.message || startError));
-            setStatus("error");
-        });
-        return function cleanup() {
-            mounted = false;
-        };
-    }, [props.trial.id, props.userInfo]);
+var _StageHeader = require("./components/StageHeader.jsx");
 
-    (0, _react.useEffect)(function () {
-        if (status !== "running") {
-            return undefined;
-        }
-        var cancelled = false;
-        var timerId = null;
+var _StageHeader2 = _interopRequireDefault(_StageHeader);
 
-        function schedule(delay) {
-            timerId = window.setTimeout(stepLoop, delay);
-        }
+var _CompletionView = require("./stages/CompletionView.jsx");
 
-        function stepLoop() {
-            if (cancelled || statusRef.current !== "running") {
-                return;
-            }
-            var startedAt = window.performance.now();
-            apiPost("/step_trial", {
-                user_info: props.userInfo,
-                trial_id: props.trial.id,
-                human_action_idx: input.consumeAction()
-            }).then(function (response) {
-                if (cancelled) {
-                    return;
-                }
-                if (response.probe_pending) {
-                    setRuntime(response.runtime);
-                    setProbe(response.probe);
-                    setProbeSubmitted(false);
-                    setProbeDraftKey(function (current) {
-                        return current + 1;
-                    });
-                    setStatus("probe");
-                    return;
-                }
-                setRuntime(response.runtime);
-                if (response.done) {
-                    finishTrial();
-                    return;
-                }
-                schedule(Math.max(0, TIMESTEP_MS - (window.performance.now() - startedAt)));
-            }).catch(function (stepError) {
-                if (cancelled) {
-                    return;
-                }
-                setError(String(stepError.message || stepError));
-                setStatus("error");
-            });
-        }
+var _CompletionView2 = _interopRequireDefault(_CompletionView);
 
-        schedule(0);
-        return function cleanup() {
-            cancelled = true;
-            window.clearTimeout(timerId);
-        };
-    }, [status, props.trial.id, props.userInfo, input]);
+var _WelcomeStage = require("./stages/WelcomeStage.jsx");
 
-    function finishTrial() {
-        setStatus("finishing");
-        apiPost("/finish_episode", {
-            user_info: props.userInfo,
-            trial_id: props.trial.id,
-            traj_id: makeTrajId(props.trial.id),
-            summary: { client: "react-spa" }
-        }).then(function (payload) {
-            setFinishPayload(payload);
-            setStatus("rating");
-        }).catch(function (finishError) {
-            setError(String(finishError.message || finishError));
-            setStatus("error");
-        });
-    }
+var _WelcomeStage2 = _interopRequireDefault(_WelcomeStage);
 
-    function submitProbe(expectation) {
-        apiPost("/submit_probe", {
-            user_info: props.userInfo,
-            trial_id: props.trial.id,
-            selected_subtask_id: expectation.selectedSubtaskId,
-            extra: {
-                expected_path: expectation.expectedPath,
-                confidence: expectation.confidence,
-                start_position: expectation.startPosition,
-                input_mode: "step_wizard"
-            }
-        }).then(function (response) {
-            return apiPost("/save_trial_data", {
-                user_info: props.userInfo,
-                trial_id: props.trial.id,
-                updates: {
-                    latest_probe: response.probe_record
-                }
-            });
-        }).then(function () {
-            setProbeSubmitted(true);
-        }).catch(function (submitError) {
-            setError(String(submitError.message || submitError));
-            setStatus("error");
-        });
-    }
+var _ModeOverviewStage = require("./stages/ModeOverviewStage.jsx");
 
-    function resumeAfterProbe() {
-        apiPost("/resume_trial_after_probe", {
-            user_info: props.userInfo,
-            trial_id: props.trial.id
-        }).then(function (response) {
-            setRuntime(response.runtime);
-            setProbe(null);
-            setProbeSubmitted(false);
-            if (response.done) {
-                finishTrial();
-                return;
-            }
-            setStatus("running");
-        }).catch(function (resumeError) {
-            setError(String(resumeError.message || resumeError));
-            setStatus("error");
-        });
-    }
+var _ModeOverviewStage2 = _interopRequireDefault(_ModeOverviewStage);
 
-    function submitTrialRating(values) {
-        var mergedSummary = Object.assign({}, finishPayload.trial_summary, { post_trial_rating: values });
-        apiPost("/save_trial_data", {
-            user_info: props.userInfo,
-            trial_id: props.trial.id,
-            updates: {
-                post_trial_rating: values,
-                trial_summary: mergedSummary
-            }
-        }).then(function () {
-            props.onComplete(mergedSummary, finishPayload.trajectory);
-        }).catch(function (ratingError) {
-            setError(String(ratingError.message || ratingError));
-            setStatus("error");
-        });
-    }
+var _ConsentStage = require("./stages/ConsentStage.jsx");
 
-    return _react2.default.createElement(
-        "div",
-        { className: "trial-screen" },
-        _react2.default.createElement(
-            "section",
-            { className: "panel-card panel-card--board" },
-            _react2.default.createElement(
-                "div",
-                { className: "trial-hero" },
-                _react2.default.createElement(
-                    "div",
-                    { className: "panel-eyebrow" },
-                    props.trial.title
-                ),
-                _react2.default.createElement(
-                    "h3",
-                    null,
-                    props.trial.mode === "observe" ? "Focus on the highlighted AI chef" : "Cook with the AI chef"
-                ),
-                _react2.default.createElement(
-                    "p",
-                    null,
-                    props.trial.instruction
-                ),
-                props.trial.mode === "observe" ? _react2.default.createElement(
-                    "div",
-                    { className: "callout" },
-                    "Watch the chef with the bold green focus box."
-                ) : null
-            ),
-            _react2.default.createElement(TrialStats, { runtime: runtime || {} }),
-            _react2.default.createElement(_board2.default, {
-                layoutGrid: props.trial.layout_grid,
-                state: runtime ? runtime.state : null,
-                trial: Object.assign({}, props.trial, { show_target_highlight: props.trial.mode === "observe" })
-            }),
-            error ? _react2.default.createElement(
-                "div",
-                { className: "callout callout--danger" },
-                error
-            ) : null
-        ),
-        _react2.default.createElement(
-            ModalShell,
-            { open: status === "probe", eyebrow: "Probe", title: probeSubmitted ? "Expectation saved" : "What do you expect next?" },
-            !probeSubmitted ? _react2.default.createElement(_expectation2.default, {
-                key: "probe-" + probeDraftKey,
-                title: "Report what you expect from the AI chef",
-                probeIndex: probe ? probe.probe_index : 1,
-                probeTotal: probe ? probe.probe_total : props.trial.probe.count,
-                prompt: props.trial.probe.prompt,
-                sketchPrompt: props.trial.probe.sketch_prompt,
-                confidencePrompt: props.trial.probe.confidence_prompt,
-                subtaskOptions: props.subtaskOptions,
-                layoutGrid: props.trial.layout_grid,
-                state: runtime ? runtime.state : null,
-                targetAgentIndex: props.trial.target_agent_index,
-                onSubmit: submitProbe
-            }) : _react2.default.createElement(
-                "div",
-                { className: "panel-stack" },
-                _react2.default.createElement(
-                    "p",
-                    null,
-                    "Now watch what the AI chef actually does."
-                ),
-                _react2.default.createElement(
-                    "div",
-                    { className: "stage-actions" },
-                    _react2.default.createElement(
-                        "button",
-                        { className: "primary-button", type: "button", onClick: resumeAfterProbe },
-                        "Resume"
-                    )
-                )
-            )
-        ),
-        _react2.default.createElement(PostTrialRatingModal, {
-            open: status === "rating" && Boolean(finishPayload),
-            trial: props.trial,
-            initialValues: {},
-            onSubmit: submitTrialRating
-        })
-    );
-}
+var _ConsentStage2 = _interopRequireDefault(_ConsentStage);
 
-function ReplayTrialRunner(props) {
-    var _useState31 = (0, _react.useState)(null),
-        _useState32 = _slicedToArray(_useState31, 2),
-        trajectory = _useState32[0],
-        setTrajectory = _useState32[1];
+var _OnboardingStage = require("./stages/OnboardingStage.jsx");
 
-    var _useState33 = (0, _react.useState)(null),
-        _useState34 = _slicedToArray(_useState33, 2),
-        summary = _useState34[0],
-        setSummary = _useState34[1];
+var _OnboardingStage2 = _interopRequireDefault(_OnboardingStage);
 
-    var _useState35 = (0, _react.useState)(0),
-        _useState36 = _slicedToArray(_useState35, 2),
-        cursor = _useState36[0],
-        setCursor = _useState36[1];
+var _TutorialStage = require("./stages/TutorialStage.jsx");
 
-    var _useState37 = (0, _react.useState)("booting"),
-        _useState38 = _slicedToArray(_useState37, 2),
-        phase = _useState38[0],
-        setPhase = _useState38[1];
+var _TutorialStage2 = _interopRequireDefault(_TutorialStage);
 
-    var _useState39 = (0, _react.useState)(null),
-        _useState40 = _slicedToArray(_useState39, 2),
-        activeProbe = _useState40[0],
-        setActiveProbe = _useState40[1];
+var _StaticStage = require("./stages/StaticStage.jsx");
 
-    var _useState41 = (0, _react.useState)([]),
-        _useState42 = _slicedToArray(_useState41, 2),
-        probeResponses = _useState42[0],
-        setProbeResponses = _useState42[1];
+var _StaticStage2 = _interopRequireDefault(_StaticStage);
 
-    var _useState43 = (0, _react.useState)(false),
-        _useState44 = _slicedToArray(_useState43, 2),
-        probeSubmitted = _useState44[0],
-        setProbeSubmitted = _useState44[1];
+var _SurveyStage = require("./stages/SurveyStage.jsx");
 
-    var _useState45 = (0, _react.useState)(0),
-        _useState46 = _slicedToArray(_useState45, 2),
-        probeDraftKey = _useState46[0],
-        setProbeDraftKey = _useState46[1];
+var _SurveyStage2 = _interopRequireDefault(_SurveyStage);
 
-    var _useState47 = (0, _react.useState)(null),
-        _useState48 = _slicedToArray(_useState47, 2),
-        finishPayload = _useState48[0],
-        setFinishPayload = _useState48[1];
+var _TrialBlockStage = require("./stages/TrialBlockStage.jsx");
 
-    var _useState49 = (0, _react.useState)(""),
-        _useState50 = _slicedToArray(_useState49, 2),
-        error = _useState50[0],
-        setError = _useState50[1];
+var _TrialBlockStage2 = _interopRequireDefault(_TrialBlockStage);
 
-    var finishingRef = (0, _react.useRef)(false);
-
-    (0, _react.useEffect)(function () {
-        var mounted = true;
-        apiPost("/start_trial", {
-            user_info: props.userInfo,
-            trial_id: props.trial.id
-        }).then(function () {
-            if (!mounted) {
-                return;
-            }
-            if (props.cachedTrajectory) {
-                setTrajectory(props.cachedTrajectory.trajectory);
-                setSummary(props.cachedTrajectory.summary);
-                setPhase("playing");
-                return;
-            }
-            apiPost("/load_trial_trajectory", {
-                user_info: props.userInfo,
-                trial_id: props.trial.source_trial_id
-            }).then(function (response) {
-                if (!mounted) {
-                    return;
-                }
-                setTrajectory(response.trajectory);
-                setSummary(response.trial_record ? response.trial_record.trial_summary : null);
-                setPhase("playing");
-            });
-        }).catch(function (loadError) {
-            if (!mounted) {
-                return;
-            }
-            setError(String(loadError.message || loadError));
-            setPhase("error");
-        });
-        return function cleanup() {
-            mounted = false;
-        };
-    }, [props.trial.id, props.trial.source_trial_id, props.userInfo, props.cachedTrajectory]);
-
-    function getReplayProbePlan() {
-        var observations = trajectory && trajectory.ep_states ? trajectory.ep_states[0] || [] : [];
-        if (!observations.length) {
-            return [];
-        }
-        if (summary && summary.probes && summary.probes.length) {
-            return summary.probes.slice(0, props.trial.probe.count).map(function (probeRecord, index) {
-                return Object.assign({}, probeRecord, { probe_index: index + 1 });
-            });
-        }
-        return [1, 2, 3].map(function (value) {
-            return {
-                probe_index: value,
-                probe_game_loop: Math.max(1, Math.floor(observations.length * value / 4))
-            };
-        });
-    }
-
-    (0, _react.useEffect)(function () {
-        if (phase !== "playing" || !trajectory) {
-            return undefined;
-        }
-        var replayPlan = getReplayProbePlan();
-        var observations = trajectory.ep_states[0] || [];
-        var timerId = window.setInterval(function () {
-            setCursor(function (previous) {
-                var nextProbe = replayPlan[probeResponses.length];
-                if (nextProbe && previous >= nextProbe.probe_game_loop) {
-                    setActiveProbe(nextProbe);
-                    setProbeSubmitted(false);
-                    setProbeDraftKey(function (current) {
-                        return current + 1;
-                    });
-                    setPhase("probe");
-                    return previous;
-                }
-                var next = previous + 1;
-                if (next >= observations.length) {
-                    window.clearInterval(timerId);
-                    setPhase("finishing");
-                    return previous;
-                }
-                return next;
-            });
-        }, REPLAY_TIMESTEP_MS);
-        return function cleanup() {
-            window.clearInterval(timerId);
-        };
-    }, [phase, trajectory, probeResponses.length]);
-
-    (0, _react.useEffect)(function () {
-        if (phase !== "finishing" || finishingRef.current || !summary) {
-            return;
-        }
-        finishingRef.current = true;
-        var summaryPayload = {
-            source_trial_id: props.trial.source_trial_id,
-            source_summary: summary,
-            replay_expectations: probeResponses
-        };
-        apiPost("/save_trial_data", {
-            user_info: props.userInfo,
-            trial_id: props.trial.id,
-            updates: summaryPayload
-        }).then(function () {
-            return apiPost("/finish_episode", {
-                user_info: props.userInfo,
-                trial_id: props.trial.id,
-                traj_id: makeTrajId(props.trial.id),
-                summary: summaryPayload
-            });
-        }).then(function (payload) {
-            setFinishPayload(payload);
-            setPhase("rating");
-        }).catch(function (finishError) {
-            setError(String(finishError.message || finishError));
-            setPhase("error");
-        });
-    }, [phase, props.trial.id, props.trial.source_trial_id, props.userInfo, probeResponses, summary]);
-
-    function submitReplayProbe(expectation) {
-        var record = {
-            probe_index: activeProbe ? activeProbe.probe_index : probeResponses.length + 1,
-            source_probe_game_loop: activeProbe ? activeProbe.probe_game_loop : cursor,
-            source_actual_subtask_id: activeProbe ? activeProbe.actual_subtask_id : null,
-            source_actual_subtask_label: activeProbe ? activeProbe.actual_subtask_label : null,
-            selected_subtask_id: expectation.selectedSubtaskId,
-            expected_path: expectation.expectedPath,
-            confidence: expectation.confidence,
-            response_timestamp: Date.now()
-        };
-        setProbeResponses(function (current) {
-            return current.concat([record]);
-        });
-        setProbeSubmitted(true);
-    }
-
-    function resumeAfterReplayProbe() {
-        setActiveProbe(null);
-        setProbeSubmitted(false);
-        setPhase("playing");
-    }
-
-    function submitTrialRating(values) {
-        var mergedSummary = Object.assign({}, finishPayload.trial_summary, { post_trial_rating: values });
-        apiPost("/save_trial_data", {
-            user_info: props.userInfo,
-            trial_id: props.trial.id,
-            updates: {
-                post_trial_rating: values,
-                trial_summary: mergedSummary
-            }
-        }).then(function () {
-            props.onComplete(mergedSummary, null);
-        }).catch(function (ratingError) {
-            setError(String(ratingError.message || ratingError));
-            setPhase("error");
-        });
-    }
-
-    var activeState = trajectory && trajectory.ep_states && trajectory.ep_states[0] ? trajectory.ep_states[0][cursor] : null;
-
-    return _react2.default.createElement(
-        "div",
-        { className: "trial-screen" },
-        _react2.default.createElement(
-            "section",
-            { className: "panel-card panel-card--board" },
-            _react2.default.createElement(
-                "div",
-                { className: "trial-hero" },
-                _react2.default.createElement(
-                    "div",
-                    { className: "panel-eyebrow" },
-                    props.trial.title
-                ),
-                _react2.default.createElement(
-                    "h3",
-                    null,
-                    "Replay the earlier scene"
-                ),
-                _react2.default.createElement(
-                    "p",
-                    null,
-                    props.trial.instruction
-                )
-            ),
-            _react2.default.createElement(TrialStats, { runtime: { score: summary ? summary.score : 0, time_left: trajectory && trajectory.ep_states ? Math.max((trajectory.ep_states[0] || []).length - cursor, 0) : 0, step_count: cursor, probe_records: probeResponses } }),
-            _react2.default.createElement(_board2.default, {
-                layoutGrid: props.trial.layout_grid,
-                state: activeState,
-                trial: Object.assign({}, props.trial, { show_target_highlight: true })
-            }),
-            phase === "playing" ? _react2.default.createElement(
-                "div",
-                { className: "callout" },
-                "Watch the replay. It will pause three times and ask what you expected."
-            ) : null,
-            error ? _react2.default.createElement(
-                "div",
-                { className: "callout callout--danger" },
-                error
-            ) : null
-        ),
-        _react2.default.createElement(
-            ModalShell,
-            { open: phase === "probe", eyebrow: "Replay probe", title: probeSubmitted ? "Expectation saved" : "What did you expect here?" },
-            !probeSubmitted ? _react2.default.createElement(_expectation2.default, {
-                key: "replay-probe-" + probeDraftKey,
-                title: "Report what you expected from the AI chef at this moment",
-                probeIndex: activeProbe ? activeProbe.probe_index : probeResponses.length + 1,
-                probeTotal: props.trial.probe.count,
-                prompt: props.trial.probe.prompt,
-                sketchPrompt: props.trial.probe.sketch_prompt,
-                confidencePrompt: props.trial.probe.confidence_prompt,
-                subtaskOptions: props.subtaskOptions,
-                layoutGrid: props.trial.layout_grid,
-                state: activeState,
-                targetAgentIndex: props.trial.target_agent_index,
-                onSubmit: submitReplayProbe
-            }) : _react2.default.createElement(
-                "div",
-                { className: "panel-stack" },
-                _react2.default.createElement(
-                    "p",
-                    null,
-                    "Your expectation was saved. Resume replay to compare it with the actual continuation."
-                ),
-                _react2.default.createElement(
-                    "div",
-                    { className: "stage-actions" },
-                    _react2.default.createElement(
-                        "button",
-                        { className: "primary-button", type: "button", onClick: resumeAfterReplayProbe },
-                        "Resume replay"
-                    )
-                )
-            )
-        ),
-        _react2.default.createElement(PostTrialRatingModal, { open: phase === "rating" && Boolean(finishPayload), trial: props.trial, initialValues: {}, onSubmit: submitTrialRating })
-    );
-}
-
-function TutorialStage(props) {
-    var trialIndex = props.runnerState.trialIndexByStage[props.stage.id] || 0;
-    var trialId = props.stage.trial_ids[trialIndex];
-    var trial = trialId ? props.session.trials[trialId] : null;
-
-    var _useState51 = (0, _react.useState)(props.initialValues && props.initialValues.team_goal_recipe_id || props.session.recipe_options[0].id),
-        _useState52 = _slicedToArray(_useState51, 2),
-        selectedRecipeId = _useState52[0],
-        setSelectedRecipeId = _useState52[1];
-
-    var _useState53 = (0, _react.useState)(Boolean(props.initialValues && props.initialValues.team_goal_recipe_id)),
-        _useState54 = _slicedToArray(_useState53, 2),
-        savedSetup = _useState54[0],
-        setSavedSetup = _useState54[1];
-
-    var _useState55 = (0, _react.useState)(false),
-        _useState56 = _slicedToArray(_useState55, 2),
-        started = _useState56[0],
-        setStarted = _useState56[1];
-
-    var _useState57 = (0, _react.useState)(-1),
-        _useState58 = _slicedToArray(_useState57, 2),
-        briefIndex = _useState58[0],
-        setBriefIndex = _useState58[1];
-
-    var _useState59 = (0, _react.useState)(""),
-        _useState60 = _slicedToArray(_useState59, 2),
-        error = _useState60[0],
-        setError = _useState60[1];
-
-    (0, _react.useEffect)(function () {
-        setStarted(false);
-        setBriefIndex(-1);
-    }, [trialId]);
-
-    var briefingSteps = (0, _react.useMemo)(function () {
-        if (!trial) {
-            return [];
-        }
-        if (trial.id === "tutorial_solo") {
-            return [{
-                title: "You are the gray chef",
-                body: "First, practice the kitchen alone without help from the AI chef.",
-                visual: _react2.default.createElement(
-                    "div",
-                    { className: "role-card__visual" },
-                    _react2.default.createElement(ChefVisual, { hatColor: "gray" }),
-                    _react2.default.createElement(
-                        "span",
-                        { className: "ingredient-strip__plus" },
-                        "\u2192"
-                    ),
-                    _react2.default.createElement(IngredientStrip, { ingredients: ["tomato", "tomato", "tomato"] })
-                )
-            }, {
-                title: "Your team goal",
-                body: "The recipe you choose here will be used for the tutorial kitchen.",
-                visual: _react2.default.createElement(IngredientStrip, { ingredients: (props.session.recipe_options.find(function (recipe) {
-                        return recipe.id === selectedRecipeId;
-                    }) || props.session.recipe_options[0]).ingredients })
-            }, {
-                title: "Solo practice flow",
-                body: "Bring 3 ingredients to the pot, wait 20 seconds for cooking, pick up the soup with a dish, and deliver it."
-            }];
-        }
-        return [{
-            title: "Now cook with the AI chef",
-            body: "The orange chef is the AI teammate you will collaborate with and predict during the study.",
-            visual: _react2.default.createElement(
-                "div",
-                { className: "role-card__visual" },
-                _react2.default.createElement(ChefVisual, { hatColor: "gray" }),
-                _react2.default.createElement(
-                    "span",
-                    { className: "ingredient-strip__plus" },
-                    "+"
-                ),
-                _react2.default.createElement(ChefVisual, { hatColor: "orange" })
-            )
-        }, {
-            title: "Shared goal",
-            body: "Keep working toward the selected recipe together while the AI chef helps in the same kitchen.",
-            visual: _react2.default.createElement(IngredientStrip, { ingredients: (props.session.recipe_options.find(function (recipe) {
-                    return recipe.id === selectedRecipeId;
-                }) || props.session.recipe_options[0]).ingredients })
-        }, {
-            title: "Probe workflow",
-            body: "A practice probe will appear. Choose the AI chef's next subtask, draw the expected route, rate your confidence, then watch the actual behavior."
-        }];
-    }, [trial, props.session.recipe_options, selectedRecipeId]);
-
-    function persistSetup() {
-        return apiPost("/save_session_section", {
-            user_info: props.userInfo,
-            section_id: "tutorial_setup",
-            data: {
-                team_goal_recipe_id: selectedRecipeId
-            }
-        }).then(function () {
-            setSavedSetup(true);
-        });
-    }
-
-    function begin() {
-        persistSetup().then(function () {
-            setBriefIndex(0);
-        }).catch(function (saveError) {
-            setError(String(saveError.message || saveError));
-        });
-    }
-
-    if (!trial) {
-        return _react2.default.createElement(
-            "div",
-            { className: "stage-stack" },
-            _react2.default.createElement(
-                "div",
-                { className: "callout" },
-                "Tutorial complete. Continue to EEG setup."
-            ),
-            _react2.default.createElement(
-                "div",
-                { className: "stage-actions" },
-                _react2.default.createElement(
-                    "button",
-                    { className: "primary-button", type: "button", onClick: function onClick() {
-                            return props.onComplete({ tutorial_complete: true, team_goal_recipe_id: selectedRecipeId });
-                        } },
-                    "Continue"
-                )
-            )
-        );
-    }
-
-    if (started) {
-        return _react2.default.createElement(InteractiveTrialRunner, {
-            trial: trial,
-            userInfo: props.userInfo,
-            subtaskOptions: props.session.subtask_options,
-            onComplete: function onComplete(summary, trajectory) {
-                setStarted(false);
-                props.onTrialComplete(trial, summary, trajectory);
-            }
-        });
-    }
-
-    return _react2.default.createElement(
-        "div",
-        { className: "stage-stack" },
-        _react2.default.createElement(
-            "section",
-            { className: "panel-card" },
-            _react2.default.createElement(
-                "div",
-                { className: "role-grid" },
-                _react2.default.createElement(
-                    "div",
-                    { className: "role-card role-card--human" },
-                    _react2.default.createElement(
-                        "div",
-                        { className: "panel-eyebrow" },
-                        "You"
-                    ),
-                    _react2.default.createElement(
-                        "div",
-                        { className: "role-card__visual" },
-                        _react2.default.createElement(ChefVisual, { hatColor: "gray" })
-                    ),
-                    _react2.default.createElement(
-                        "h3",
-                        null,
-                        "Gray chef"
-                    ),
-                    _react2.default.createElement(
-                        "p",
-                        null,
-                        "You control the gray chef."
-                    )
-                ),
-                _react2.default.createElement(
-                    "div",
-                    { className: "role-card role-card--ai" },
-                    _react2.default.createElement(
-                        "div",
-                        { className: "panel-eyebrow" },
-                        "AI chef"
-                    ),
-                    _react2.default.createElement(
-                        "div",
-                        { className: "role-card__visual" },
-                        _react2.default.createElement(ChefVisual, { hatColor: "orange" })
-                    ),
-                    _react2.default.createElement(
-                        "h3",
-                        null,
-                        "Orange-highlighted chef"
-                    ),
-                    _react2.default.createElement(
-                        "p",
-                        null,
-                        "The AI chef is the one you observe and predict during probes."
-                    )
-                )
-            ),
-            _react2.default.createElement(
-                "div",
-                { className: "section-block" },
-                _react2.default.createElement(
-                    "div",
-                    { className: "section-block__title" },
-                    "Set the team goal"
-                ),
-                _react2.default.createElement(
-                    "div",
-                    { className: "recipe-grid" },
-                    props.session.recipe_options.map(function (recipe) {
-                        return _react2.default.createElement(
-                            "button",
-                            {
-                                className: "recipe-card" + (selectedRecipeId === recipe.id ? " is-selected" : ""),
-                                key: recipe.id,
-                                type: "button",
-                                onClick: function onClick() {
-                                    return setSelectedRecipeId(recipe.id);
-                                }
-                            },
-                            _react2.default.createElement(
-                                "div",
-                                { className: "recipe-card__visual" },
-                                _react2.default.createElement(IngredientStrip, { ingredients: recipe.ingredients })
-                            ),
-                            _react2.default.createElement(
-                                "div",
-                                { className: "recipe-card__short" },
-                                recipe.short_label
-                            ),
-                            _react2.default.createElement(
-                                "strong",
-                                null,
-                                recipe.label
-                            ),
-                            _react2.default.createElement(
-                                "span",
-                                null,
-                                recipe.points,
-                                " points"
-                            )
-                        );
-                    })
-                )
-            ),
-            _react2.default.createElement(
-                "div",
-                { className: "section-block" },
-                _react2.default.createElement(
-                    "div",
-                    { className: "section-block__title" },
-                    "How tutorial works"
-                ),
-                _react2.default.createElement(
-                    "div",
-                    { className: "tutorial-steps" },
-                    _react2.default.createElement(
-                        "div",
-                        null,
-                        "1. Practice cooking alone first."
-                    ),
-                    _react2.default.createElement(
-                        "div",
-                        null,
-                        "2. Practice once more with the AI chef."
-                    ),
-                    _react2.default.createElement(
-                        "div",
-                        null,
-                        "3. Try the probe workflow before the main session."
-                    )
-                )
-            ),
-            error ? _react2.default.createElement(
-                "div",
-                { className: "callout callout--danger" },
-                error
-            ) : null,
-            _react2.default.createElement(
-                "div",
-                { className: "stage-actions" },
-                _react2.default.createElement(
-                    "button",
-                    { className: "primary-button", type: "button", onClick: begin },
-                    savedSetup ? "Start next tutorial trial" : "Save goal and start tutorial"
-                )
-            )
-        ),
-        _react2.default.createElement(
-            "section",
-            { className: "panel-card" },
-            _react2.default.createElement(_board2.default, { layoutGrid: props.session.layout_grid, state: props.previewState, trial: { human_player_index: 1, target_agent_index: 0, show_target_highlight: false }, label: "Tutorial", description: "Practice the kitchen before the main session." })
-        ),
-        _react2.default.createElement(
-            ModalShell,
-            { open: briefIndex >= 0 && briefIndex < briefingSteps.length, eyebrow: "Tutorial", title: briefingSteps[briefIndex] ? briefingSteps[briefIndex].title : "Tutorial" },
-            _react2.default.createElement(
-                "div",
-                { className: "panel-stack" },
-                briefingSteps[briefIndex] && briefingSteps[briefIndex].visual ? _react2.default.createElement(
-                    "div",
-                    { className: "guide-visual" },
-                    briefingSteps[briefIndex].visual
-                ) : null,
-                _react2.default.createElement(
-                    "p",
-                    null,
-                    briefingSteps[briefIndex] ? briefingSteps[briefIndex].body : ""
-                ),
-                _react2.default.createElement(
-                    "div",
-                    { className: "stage-actions" },
-                    briefIndex < briefingSteps.length - 1 ? _react2.default.createElement(
-                        "button",
-                        { className: "primary-button", type: "button", onClick: function onClick() {
-                                return setBriefIndex(briefIndex + 1);
-                            } },
-                        "Next"
-                    ) : _react2.default.createElement(
-                        "button",
-                        { className: "primary-button", type: "button", onClick: function onClick() {
-                                setBriefIndex(briefingSteps.length);
-                                setStarted(true);
-                            } },
-                        "Start tutorial"
-                    )
-                )
-            )
-        )
-    );
-}
-
-function StaticStage(props) {
-    return _react2.default.createElement(
-        "div",
-        { className: "stage-stack" },
-        _react2.default.createElement(
-            "section",
-            { className: "panel-card" },
-            _react2.default.createElement(
-                "div",
-                { className: "panel-stack" },
-                props.stage.body.map(function (line, index) {
-                    return _react2.default.createElement(
-                        "p",
-                        { key: "static-" + index },
-                        line
-                    );
-                }),
-                _react2.default.createElement(
-                    "div",
-                    { className: "stage-actions" },
-                    _react2.default.createElement(
-                        "button",
-                        { className: "primary-button", type: "button", onClick: function onClick() {
-                                return props.onContinue({ acknowledged: true });
-                            } },
-                        "Continue"
-                    )
-                )
-            )
-        )
-    );
-}
-
-function SurveyStage(props) {
-    var initialValues = Object.assign({}, props.initialValues || {});
-    props.stage.questions.forEach(function (question) {
-        if (initialValues[question.id] === undefined) {
-            initialValues[question.id] = "";
-        }
-    });
-
-    var _useState61 = (0, _react.useState)(initialValues),
-        _useState62 = _slicedToArray(_useState61, 2),
-        values = _useState62[0],
-        setValues = _useState62[1];
-
-    var _useState63 = (0, _react.useState)(""),
-        _useState64 = _slicedToArray(_useState63, 2),
-        error = _useState64[0],
-        setError = _useState64[1];
-
-    function updateField(field, event) {
-        var nextValues = Object.assign({}, values);
-        nextValues[field.id] = fieldValueFromEvent(field, event);
-        setValues(nextValues);
-    }
-
-    function submit() {
-        var missing = props.stage.questions.filter(function (question) {
-            return question.type !== "textarea" && !String(values[question.id] || "").trim();
-        });
-        if (missing.length) {
-            setError("Please answer all required questions.");
-            return;
-        }
-        props.onSubmit(values);
-    }
-
-    return _react2.default.createElement(
-        "div",
-        { className: "stage-stack" },
-        _react2.default.createElement(
-            "section",
-            { className: "panel-card panel-card--scroll" },
-            _react2.default.createElement(
-                "div",
-                { className: "panel-stack" },
-                props.stage.questions.map(function (question) {
-                    return _react2.default.createElement(InputField, { key: question.id, field: question, value: values[question.id], onChange: function onChange(event) {
-                            return updateField(question, event);
-                        } });
-                }),
-                error ? _react2.default.createElement(
-                    "div",
-                    { className: "callout callout--danger" },
-                    error
-                ) : null,
-                _react2.default.createElement(
-                    "div",
-                    { className: "stage-actions" },
-                    _react2.default.createElement(
-                        "button",
-                        { className: "primary-button", type: "button", onClick: submit },
-                        "Save and continue"
-                    )
-                )
-            )
-        )
-    );
-}
-
-function TrialBlockStage(props) {
-    var trialIndex = props.runnerState.trialIndexByStage[props.stage.id] || 0;
-    var trialId = props.stage.trial_ids[trialIndex];
-    var trial = trialId ? props.session.trials[trialId] : null;
-
-    var _useState65 = (0, _react.useState)(false),
-        _useState66 = _slicedToArray(_useState65, 2),
-        started = _useState66[0],
-        setStarted = _useState66[1];
-
-    (0, _react.useEffect)(function () {
-        setStarted(false);
-    }, [props.stage.id, trialId]);
-
-    if (!trial) {
-        return _react2.default.createElement(
-            "div",
-            { className: "stage-stack" },
-            _react2.default.createElement(
-                "div",
-                { className: "callout" },
-                "This block is complete."
-            ),
-            _react2.default.createElement(
-                "div",
-                { className: "stage-actions" },
-                _react2.default.createElement(
-                    "button",
-                    { className: "primary-button", type: "button", onClick: function onClick() {
-                            return props.onAdvanceEmptyBlock();
-                        } },
-                    "Continue"
-                )
-            )
-        );
-    }
-
-    if (started) {
-        if (trial.mode === "replay") {
-            return _react2.default.createElement(ReplayTrialRunner, {
-                trial: trial,
-                userInfo: props.userInfo,
-                subtaskOptions: props.session.subtask_options,
-                cachedTrajectory: props.trajectoryCache[trial.source_trial_id] || null,
-                onComplete: function onComplete(summary, trajectory) {
-                    setStarted(false);
-                    props.onTrialComplete(trial, summary, trajectory);
-                }
-            });
-        }
-        return _react2.default.createElement(InteractiveTrialRunner, {
-            trial: trial,
-            userInfo: props.userInfo,
-            subtaskOptions: props.session.subtask_options,
-            onComplete: function onComplete(summary, trajectory) {
-                setStarted(false);
-                props.onTrialComplete(trial, summary, trajectory);
-            }
-        });
-    }
-
-    return _react2.default.createElement(
-        "div",
-        { className: "stage-stack" },
-        _react2.default.createElement(
-            "section",
-            { className: "panel-card" },
-            _react2.default.createElement(
-                "div",
-                { className: "trial-start" },
-                _react2.default.createElement(
-                    "div",
-                    { className: "panel-eyebrow" },
-                    trial.mode.toUpperCase()
-                ),
-                _react2.default.createElement(
-                    "h3",
-                    null,
-                    trial.title
-                ),
-                _react2.default.createElement(
-                    "p",
-                    null,
-                    trial.instruction
-                ),
-                _react2.default.createElement(
-                    "div",
-                    { className: "trial-start__meta" },
-                    _react2.default.createElement(
-                        "span",
-                        null,
-                        "Trial ",
-                        trialIndex + 1,
-                        " / ",
-                        props.stage.trial_ids.length
-                    ),
-                    trial.mode === "observe" ? _react2.default.createElement(
-                        "span",
-                        null,
-                        "Watch the chef with the bold green focus box."
-                    ) : null
-                ),
-                _react2.default.createElement(
-                    "div",
-                    { className: "stage-actions" },
-                    _react2.default.createElement(
-                        "button",
-                        { className: "primary-button", type: "button", onClick: function onClick() {
-                                return setStarted(true);
-                            } },
-                        "Start trial"
-                    )
-                )
-            )
-        ),
-        _react2.default.createElement(
-            "section",
-            { className: "panel-card" },
-            _react2.default.createElement(_board2.default, { layoutGrid: trial.layout_grid, state: props.previewState, trial: Object.assign({}, trial, { show_target_highlight: trial.mode !== "collaborate" }), label: trial.title, description: trial.instruction })
-        )
-    );
-}
-
-function CompletionView() {
-    function exit() {
-        try {
-            window.close();
-        } catch (error) {
-            window.location.href = "about:blank";
-        }
-    }
-    return _react2.default.createElement(
-        "div",
-        { className: "completion-shell" },
-        _react2.default.createElement(
-            "div",
-            { className: "panel-card completion-card" },
-            _react2.default.createElement(
-                "h2",
-                null,
-                "Session complete"
-            ),
-            _react2.default.createElement(
-                "p",
-                null,
-                "Thank you for your participation."
-            ),
-            _react2.default.createElement(
-                "p",
-                null,
-                "You have finished the session."
-            ),
-            _react2.default.createElement(
-                "p",
-                null,
-                "Please remain seated and wait for the researcher."
-            ),
-            _react2.default.createElement(
-                "div",
-                { className: "stage-actions" },
-                _react2.default.createElement(
-                    "button",
-                    { className: "primary-button", type: "button", onClick: exit },
-                    "Exit"
-                )
-            )
-        )
-    );
-}
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function SessionApp() {
-    var storedUserInfo = readJsonStorage("before_game") || {};
+    var storedUserInfo = (0, _utils.readJsonStorage)("before_game") || {};
 
-    var _useState67 = (0, _react.useState)({ loading: true, error: "", bundle: null }),
-        _useState68 = _slicedToArray(_useState67, 2),
-        bootState = _useState68[0],
-        setBootState = _useState68[1];
+    var _useState = (0, _react.useState)({ loading: true, error: "", bundle: null }),
+        _useState2 = _slicedToArray(_useState, 2),
+        bootState = _useState2[0],
+        setBootState = _useState2[1];
 
-    var _useState69 = (0, _react.useState)(storedUserInfo),
-        _useState70 = _slicedToArray(_useState69, 2),
-        userInfo = _useState70[0],
-        setUserInfo = _useState70[1];
+    var _useState3 = (0, _react.useState)(storedUserInfo),
+        _useState4 = _slicedToArray(_useState3, 2),
+        userInfo = _useState4[0],
+        setUserInfo = _useState4[1];
 
-    var _useState71 = (0, _react.useState)(null),
-        _useState72 = _slicedToArray(_useState71, 2),
-        runnerState = _useState72[0],
-        setRunnerState = _useState72[1];
+    var _useState5 = (0, _react.useState)(null),
+        _useState6 = _slicedToArray(_useState5, 2),
+        runnerState = _useState6[0],
+        setRunnerState = _useState6[1];
 
     var trajectoryCacheRef = (0, _react.useRef)({});
-    var previewStateRef = (0, _react.useRef)(buildPreviewState(["XXXXXXXXXXXXX", "O   DTXTD   O", "XX    P    XX", "S   2 P 1   S", "XXXXXTXTXXXXX"]));
+    var previewStateRef = (0, _react.useRef)((0, _utils.buildPreviewState)(["XXXXXXXXXXXXX", "O   DTXTD   O", "XX    P    XX", "S   2 P 1   S", "XXXXXTXTXXXXX"]));
 
     function bootstrap(nextUserInfo) {
         setBootState({ loading: true, error: "", bundle: null });
-        return apiPost("/session_config", nextUserInfo && nextUserInfo.name ? { user_info: nextUserInfo } : {}).then(function (bundle) {
+        return (0, _utils.apiPost)("/session_config", nextUserInfo && nextUserInfo.name ? { user_info: nextUserInfo } : {}).then(function (bundle) {
             setBootState({ loading: false, error: "", bundle: bundle });
-            setRunnerState(buildRunnerStateFromServer(bundle.session, bundle, nextUserInfo || {}));
+            setRunnerState((0, _utils.buildRunnerStateFromServer)(bundle.session, bundle, nextUserInfo || {}));
         }).catch(function (error) {
             setBootState({ loading: false, error: String(error.message || error), bundle: null });
         });
@@ -34965,7 +33801,7 @@ function SessionApp() {
 
     (0, _react.useEffect)(function () {
         if (runnerState) {
-            writeJsonStorage("eeg_runner_state_spa", runnerState);
+            (0, _utils.writeJsonStorage)("eeg_runner_state_spa", runnerState);
         }
     }, [runnerState]);
 
@@ -34974,7 +33810,7 @@ function SessionApp() {
         if (!actor || !actor.name) {
             return Promise.resolve();
         }
-        return apiPost("/save_session_section", {
+        return (0, _utils.apiPost)("/save_session_section", {
             user_info: actor,
             section_id: "client_progress",
             data: {
@@ -34991,7 +33827,7 @@ function SessionApp() {
     function completeStage(stage, data, userOverride, baseRunnerState) {
         var runner = baseRunnerState || runnerState;
         var actor = userOverride || userInfo;
-        var completedStages = dedupe((runner.completedStages || []).concat([stage.id]));
+        var completedStages = (0, _utils.dedupe)((runner.completedStages || []).concat([stage.id]));
         var nextStageIndex = Math.min(runner.stageIndex + 1, bootState.bundle.session.stages.length);
         var nextStage = bootState.bundle.session.stages[nextStageIndex] || null;
         var nextRunnerState = {
@@ -35004,7 +33840,7 @@ function SessionApp() {
         };
         nextRunnerState.sectionResponses[stage.id] = data || {};
 
-        var savePromise = actor && actor.name ? apiPost("/save_session_section", {
+        var savePromise = actor && actor.name ? (0, _utils.apiPost)("/save_session_section", {
             user_info: actor,
             section_id: stage.id,
             data: data || {},
@@ -35043,10 +33879,7 @@ function SessionApp() {
         var nextTrialSummaries = Object.assign({}, runnerState.trialSummaries);
         nextTrialSummaries[trial.id] = summary;
         if (trajectory) {
-            trajectoryCacheRef.current[trial.id] = {
-                trajectory: trajectory,
-                summary: summary
-            };
+            trajectoryCacheRef.current[trial.id] = { trajectory: trajectory, summary: summary };
         }
 
         var updatedRunnerState = {
@@ -35110,26 +33943,26 @@ function SessionApp() {
     var session = bootState.bundle.session;
     var stage = session.stages[runnerState.stageIndex] || null;
     if (!stage) {
-        return _react2.default.createElement(CompletionView, null);
+        return _react2.default.createElement(_CompletionView2.default, null);
     }
 
     var stageBody = null;
     if (stage.type === "welcome") {
-        stageBody = _react2.default.createElement(WelcomeStage, { session: session, onContinue: function onContinue(payload) {
+        stageBody = _react2.default.createElement(_WelcomeStage2.default, { session: session, onContinue: function onContinue(payload) {
                 return completeStage(stage, payload);
             } });
     } else if (stage.type === "mode_overview") {
-        stageBody = _react2.default.createElement(ModeOverviewStage, { session: session, onContinue: function onContinue(payload) {
+        stageBody = _react2.default.createElement(_ModeOverviewStage2.default, { session: session, onContinue: function onContinue(payload) {
                 return completeStage(stage, payload);
             } });
     } else if (stage.type === "intake_form") {
-        stageBody = _react2.default.createElement(ConsentStage, { intakeForm: bootState.bundle.intake_form, userInfo: userInfo, onSubmit: handleIntakeSubmit });
+        stageBody = _react2.default.createElement(_ConsentStage2.default, { intakeForm: bootState.bundle.intake_form, userInfo: userInfo, onSubmit: handleIntakeSubmit });
     } else if (stage.type === "onboarding") {
-        stageBody = _react2.default.createElement(OnboardingStage, { stage: stage, session: session, onContinue: function onContinue(payload) {
+        stageBody = _react2.default.createElement(_OnboardingStage2.default, { stage: stage, session: session, onContinue: function onContinue(payload) {
                 return completeStage(stage, payload);
             } });
     } else if (stage.type === "tutorial_lab") {
-        stageBody = _react2.default.createElement(TutorialStage, {
+        stageBody = _react2.default.createElement(_TutorialStage2.default, {
             stage: stage,
             session: session,
             userInfo: userInfo,
@@ -35142,15 +33975,15 @@ function SessionApp() {
             }
         });
     } else if (stage.type === "static") {
-        stageBody = _react2.default.createElement(StaticStage, { stage: stage, onContinue: function onContinue(payload) {
+        stageBody = _react2.default.createElement(_StaticStage2.default, { stage: stage, onContinue: function onContinue(payload) {
                 return completeStage(stage, payload);
             } });
     } else if (stage.type === "survey") {
-        stageBody = _react2.default.createElement(SurveyStage, { stage: stage, initialValues: runnerState.sectionResponses[stage.id], onSubmit: function onSubmit(values) {
+        stageBody = _react2.default.createElement(_SurveyStage2.default, { stage: stage, initialValues: runnerState.sectionResponses[stage.id], onSubmit: function onSubmit(values) {
                 return handleSurveySubmit(stage, values);
             } });
     } else if (stage.type === "trial_block") {
-        stageBody = _react2.default.createElement(TrialBlockStage, {
+        stageBody = _react2.default.createElement(_TrialBlockStage2.default, {
             stage: stage,
             session: session,
             userInfo: userInfo,
@@ -35167,11 +34000,11 @@ function SessionApp() {
     return _react2.default.createElement(
         "div",
         { className: "app-shell" },
-        _react2.default.createElement(TopProgress, { session: session, runnerState: runnerState }),
+        _react2.default.createElement(_TopProgress2.default, { session: session, runnerState: runnerState }),
         _react2.default.createElement(
             "main",
             { className: "app-main" },
-            _react2.default.createElement(StageHeader, { stage: stage, session: session, runnerState: runnerState }),
+            _react2.default.createElement(_StageHeader2.default, { stage: stage, session: session, runnerState: runnerState }),
             stageBody
         )
     );
@@ -35179,12 +34012,13 @@ function SessionApp() {
 
 _reactDom2.default.render(_react2.default.createElement(SessionApp, null), document.getElementById("app-root"));
 
-},{"./spa/atlas.js":19,"./spa/board.jsx":20,"./spa/expectation.jsx":21,"react":8,"react-dom":5}],19:[function(require,module,exports){
+},{"./components/StageHeader.jsx":30,"./components/TopProgress.jsx":31,"./stages/CompletionView.jsx":39,"./stages/ConsentStage.jsx":40,"./stages/ModeOverviewStage.jsx":41,"./stages/OnboardingStage.jsx":42,"./stages/StaticStage.jsx":43,"./stages/SurveyStage.jsx":44,"./stages/TrialBlockStage.jsx":45,"./stages/TutorialStage.jsx":46,"./stages/WelcomeStage.jsx":47,"./utils.js":48,"react":8,"react-dom":5}],36:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+exports.TERRAIN_IMAGE_URL = exports.OBJECTS_IMAGE_URL = exports.CHEFS_IMAGE_URL = exports.TERRAIN_ATLAS = exports.OBJECTS_ATLAS = exports.CHEFS_ATLAS = undefined;
 exports.orientationToFrame = orientationToFrame;
 exports.terrainSymbolToFrame = terrainSymbolToFrame;
 exports.getFrame = getFrame;
@@ -35192,6 +34026,9 @@ exports.soupFrameName = soupFrameName;
 exports.objectFrameName = objectFrameName;
 exports.heldObjectSuffix = heldObjectSuffix;
 exports.hatColorForPlayer = hatColorForPlayer;
+
+var _constants = require("../constants.js");
+
 var chefsAtlas = require("../../../assets/chefs.json");
 var objectsAtlas = require("../../../assets/objects.json");
 var terrainAtlas = require("../../../assets/terrain.json");
@@ -35221,22 +34058,7 @@ function orientationToFrame(orientation) {
 }
 
 function terrainSymbolToFrame(symbol) {
-    switch (symbol) {
-        case "X":
-            return "counter.png";
-        case "O":
-            return "onions.png";
-        case "T":
-            return "tomatoes.png";
-        case "D":
-            return "dishes.png";
-        case "P":
-            return "pot.png";
-        case "S":
-            return "serve.png";
-        default:
-            return "floor.png";
-    }
+    return (_constants.TERRAIN_SYMBOL_MAP[symbol] || _constants.DEFAULT_TERRAIN).frame;
 }
 
 function getFrame(atlas, frameName) {
@@ -35330,7 +34152,7 @@ function hatColorForPlayer(playerIndex, trial) {
     return "blue";
 }
 
-},{"../../../assets/chefs.json":15,"../../../assets/objects.json":16,"../../../assets/terrain.json":17}],20:[function(require,module,exports){
+},{"../../../assets/chefs.json":15,"../../../assets/objects.json":16,"../../../assets/terrain.json":17,"../constants.js":33}],37:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -35346,6 +34168,8 @@ var _react = require("react");
 var _react2 = _interopRequireDefault(_react);
 
 var _atlas = require("./atlas");
+
+var _utils = require("../utils.js");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -35403,29 +34227,8 @@ function terrainAt(layoutGrid, position) {
     return layoutGrid[y][x] || " ";
 }
 
-function atlasStyle(atlas, imageUrl, frameName, size) {
-    var frame = (0, _atlas.getFrame)(atlas, frameName);
-    if (!frame) {
-        return {
-            width: size,
-            height: size
-        };
-    }
-    var frameDef = frame.frame;
-    var scale = size / frameDef.w;
-    return {
-        width: size,
-        height: size,
-        backgroundImage: 'url("' + imageUrl + '")',
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "-" + String(frameDef.x * scale) + "px -" + String(frameDef.y * scale) + "px",
-        backgroundSize: String(atlas.meta.size.w * scale) + "px " + String(atlas.meta.size.h * scale) + "px",
-        imageRendering: "pixelated"
-    };
-}
-
 function SpriteFrame(props) {
-    var style = atlasStyle(props.atlas, props.imageUrl, props.frameName, props.size);
+    var style = (0, _utils.atlasStyle)(props.atlas, props.imageUrl, props.frameName, props.size);
     return _react2.default.createElement("div", { className: props.className, style: style });
 }
 
@@ -35591,7 +34394,7 @@ function OvercookedBoard(props) {
     );
 }
 
-},{"./atlas":19,"react":8}],21:[function(require,module,exports){
+},{"../utils.js":48,"./atlas":36,"react":8}],38:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -35608,37 +34411,15 @@ var _react2 = _interopRequireDefault(_react);
 
 var _atlas = require("./atlas");
 
+var _utils = require("../utils.js");
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var VISUAL_SIZE = 56;
 var DEFAULT_SKETCH_TILE_SIZE = 38;
 
-function atlasStyle(atlas, imageUrl, frameName, size, opacity) {
-    var frame = (0, _atlas.getFrame)(atlas, frameName);
-    if (!frame) {
-        return {
-            width: size,
-            height: size,
-            opacity: opacity === undefined ? 1 : opacity
-        };
-    }
-    var frameDef = frame.frame;
-    var scale = size / frameDef.w;
-    return {
-        width: size,
-        height: size,
-        backgroundImage: 'url("' + imageUrl + '")',
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "-" + String(frameDef.x * scale) + "px -" + String(frameDef.y * scale) + "px",
-        backgroundSize: String(atlas.meta.size.w * scale) + "px " + String(atlas.meta.size.h * scale) + "px",
-        imageRendering: "pixelated",
-        opacity: opacity === undefined ? 1 : opacity,
-        flex: "0 0 auto"
-    };
-}
-
 function Sprite(props) {
-    return _react2.default.createElement("div", { className: props.className, style: atlasStyle(props.atlas, props.imageUrl, props.frameName, props.size, props.opacity) });
+    return _react2.default.createElement("div", { className: props.className, style: Object.assign({ flex: "0 0 auto" }, (0, _utils.atlasStyle)(props.atlas, props.imageUrl, props.frameName, props.size, props.opacity)) });
 }
 
 function ChefSprite(props) {
@@ -35951,11 +34732,7 @@ function TrajectorySketcher(props) {
                     points: points.map(function (point) {
                         return String(point[0] * tileSize + tileSize / 2) + "," + String(point[1] * tileSize + tileSize / 2);
                     }).join(" "),
-                    fill: "none",
-                    stroke: "rgba(61, 217, 178, 0.98)",
-                    strokeWidth: "5",
-                    strokeLinecap: "round",
-                    strokeLinejoin: "round"
+                    style: { fill: "none", stroke: "var(--color-main-stroke)", strokeWidth: 5, strokeLinecap: "round", strokeLinejoin: "round" }
                 }) : null,
                 points.map(function (point, index) {
                     return _react2.default.createElement("circle", {
@@ -35963,7 +34740,7 @@ function TrajectorySketcher(props) {
                         cx: point[0] * tileSize + tileSize / 2,
                         cy: point[1] * tileSize + tileSize / 2,
                         r: index === 0 ? 8 : 5,
-                        fill: index === 0 ? "rgba(100, 168, 255, 1)" : "rgba(61, 217, 178, 1)"
+                        style: { fill: index === 0 ? "var(--color-sub)" : "var(--color-main)" }
                     });
                 })
             )
@@ -36210,4 +34987,1670 @@ function ExpectationComposer(props) {
     );
 }
 
-},{"./atlas":19,"react":8}]},{},[18]);
+},{"../utils.js":48,"./atlas":36,"react":8}],39:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = CompletionView;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function CompletionView() {
+    function exit() {
+        try {
+            window.close();
+        } catch (error) {
+            window.location.href = "about:blank";
+        }
+    }
+    return _react2.default.createElement(
+        "div",
+        { className: "completion-shell" },
+        _react2.default.createElement(
+            "div",
+            { className: "panel-card completion-card" },
+            _react2.default.createElement(
+                "h2",
+                null,
+                "Session complete"
+            ),
+            _react2.default.createElement(
+                "p",
+                null,
+                "Thank you for your participation."
+            ),
+            _react2.default.createElement(
+                "p",
+                null,
+                "You have finished the session."
+            ),
+            _react2.default.createElement(
+                "p",
+                null,
+                "Please remain seated and wait for the researcher."
+            ),
+            _react2.default.createElement(
+                "div",
+                { className: "stage-actions" },
+                _react2.default.createElement(
+                    "button",
+                    { className: "primary-button", type: "button", onClick: exit },
+                    "Exit"
+                )
+            )
+        )
+    );
+}
+
+},{"react":8}],40:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+exports.default = ConsentStage;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _utils = require("../utils.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function ConsentStage(props) {
+    var initialValues = {};
+    props.intakeForm.sections.forEach(function (section) {
+        section.fields.forEach(function (field) {
+            initialValues[field.id] = props.userInfo && Object.prototype.hasOwnProperty.call(props.userInfo, field.id) ? (0, _utils.normalizeChoiceValue)(props.userInfo[field.id]) : "";
+        });
+    });
+    initialValues.consent = false;
+
+    var _useState = (0, _react.useState)(initialValues),
+        _useState2 = _slicedToArray(_useState, 2),
+        values = _useState2[0],
+        setValues = _useState2[1];
+
+    var _useState3 = (0, _react.useState)(false),
+        _useState4 = _slicedToArray(_useState3, 2),
+        submitting = _useState4[0],
+        setSubmitting = _useState4[1];
+
+    var _useState5 = (0, _react.useState)(""),
+        _useState6 = _slicedToArray(_useState5, 2),
+        error = _useState6[0],
+        setError = _useState6[1];
+
+    function updateField(field, event) {
+        var nextValues = Object.assign({}, values);
+        nextValues[field.id] = (0, _utils.fieldValueFromEvent)(field, event);
+        setValues(nextValues);
+        setError("");
+    }
+
+    function submit() {
+        var missing = [];
+        props.intakeForm.sections.forEach(function (section) {
+            section.fields.forEach(function (field) {
+                if (field.required && !(0, _utils.hasValue)(values[field.id])) {
+                    missing.push(field.label);
+                }
+            });
+        });
+        if (!values.consent) {
+            missing.push("Consent");
+        }
+        if (missing.length) {
+            setError("Please complete all required items.");
+            return;
+        }
+        setError("");
+        setSubmitting(true);
+        (0, _utils.apiPost)("/create_questionnaire_before_game", values).then(function () {
+            (0, _utils.writeJsonStorage)("before_game", values);
+            return Promise.resolve(props.onSubmit(values));
+        }).catch(function (submitError) {
+            setSubmitting(false);
+            setError(String(submitError.message || submitError));
+        });
+    }
+
+    function renderField(field) {
+        var currentValue = (0, _utils.normalizeChoiceValue)(values[field.id]);
+        if (field.type === "radio") {
+            return _react2.default.createElement(
+                "div",
+                { className: "ci-field", key: field.id },
+                _react2.default.createElement(
+                    "div",
+                    { className: "ci-label" },
+                    field.label,
+                    field.required ? _react2.default.createElement(
+                        "span",
+                        { className: "ci-required" },
+                        " *"
+                    ) : null
+                ),
+                _react2.default.createElement(
+                    "div",
+                    { className: "ci-pills" },
+                    field.options.map(function (option) {
+                        var optionValue = (0, _utils.normalizeChoiceValue)(option.value);
+                        var optionLabel = (0, _utils.normalizeChoiceLabel)(option.label, option.value);
+                        return _react2.default.createElement(
+                            "button",
+                            {
+                                className: "ci-pill" + (String(currentValue) === String(optionValue) ? " is-selected" : ""),
+                                key: field.id + "-" + optionValue,
+                                type: "button",
+                                onClick: function onClick() {
+                                    updateField(field, { target: { value: optionValue } });
+                                }
+                            },
+                            optionLabel
+                        );
+                    })
+                )
+            );
+        }
+        if (field.type === "textarea") {
+            return _react2.default.createElement(
+                "div",
+                { className: "ci-field", key: field.id },
+                _react2.default.createElement(
+                    "div",
+                    { className: "ci-label" },
+                    field.label,
+                    field.required ? _react2.default.createElement(
+                        "span",
+                        { className: "ci-required" },
+                        " *"
+                    ) : null
+                ),
+                _react2.default.createElement("textarea", { className: "ci-textarea", value: currentValue || "", onChange: function onChange(event) {
+                        return updateField(field, event);
+                    } })
+            );
+        }
+        return _react2.default.createElement(
+            "div",
+            { className: "ci-field", key: field.id },
+            _react2.default.createElement(
+                "div",
+                { className: "ci-label" },
+                field.label,
+                field.required ? _react2.default.createElement(
+                    "span",
+                    { className: "ci-required" },
+                    " *"
+                ) : null
+            ),
+            _react2.default.createElement("input", { className: "ci-input", type: field.type, min: field.min, max: field.max, value: currentValue || "", onChange: function onChange(event) {
+                    return updateField(field, event);
+                } })
+        );
+    }
+
+    return _react2.default.createElement(
+        "div",
+        { className: "consent-form" },
+        props.intakeForm.sections.map(function (section, sectionIndex) {
+            return _react2.default.createElement(
+                "div",
+                { className: "ci-section", key: section.id },
+                sectionIndex > 0 ? _react2.default.createElement("div", { className: "ci-divider" }) : null,
+                _react2.default.createElement(
+                    "div",
+                    { className: "ci-section__label" },
+                    section.title
+                ),
+                _react2.default.createElement(
+                    "div",
+                    { className: "ci-fields" },
+                    section.fields.map(function (field) {
+                        return renderField(field);
+                    })
+                )
+            );
+        }),
+        _react2.default.createElement("div", { className: "ci-divider" }),
+        _react2.default.createElement(
+            "label",
+            { className: "ci-consent" },
+            _react2.default.createElement("input", {
+                type: "checkbox",
+                checked: Boolean(values.consent),
+                onChange: function onChange() {
+                    setValues(Object.assign({}, values, { consent: !values.consent }));
+                    setError("");
+                }
+            }),
+            _react2.default.createElement(
+                "span",
+                { className: "ci-check-box" + (values.consent ? " is-checked" : "") },
+                values.consent ? _react2.default.createElement(
+                    "svg",
+                    { width: "12", height: "12", viewBox: "0 0 12 12", fill: "none" },
+                    _react2.default.createElement("path", { d: "M2 6l3 3 5-5", stroke: "#fff", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round" })
+                ) : null
+            ),
+            _react2.default.createElement(
+                "span",
+                { className: "ci-consent__text" },
+                "I agree to participate in this study."
+            )
+        ),
+        error ? _react2.default.createElement(
+            "div",
+            { className: "callout callout--danger" },
+            error
+        ) : null,
+        _react2.default.createElement(
+            "div",
+            { className: "stage-actions" },
+            _react2.default.createElement(
+                "button",
+                { className: "primary-button", type: "button", disabled: submitting, onClick: submit },
+                submitting ? "Saving..." : "Next"
+            )
+        )
+    );
+}
+
+},{"../utils.js":48,"react":8}],41:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = ModeOverviewStage;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _utils = require("../utils.js");
+
+var _ModePlaybackCard = require("../components/ModePlaybackCard.jsx");
+
+var _ModePlaybackCard2 = _interopRequireDefault(_ModePlaybackCard);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function ModeOverviewStage(props) {
+    var demos = (0, _react.useMemo)(function () {
+        return (0, _utils.buildModeDemoFrames)();
+    }, []);
+    var collaborateTrial = props.session.trials.collaborate_1 || props.session.trials.tutorial_team || props.session.trials.observe_1;
+    var replayTrial = props.session.trials.replay_1 || collaborateTrial;
+    return _react2.default.createElement(
+        "div",
+        { className: "stage-stack" },
+        _react2.default.createElement(
+            "div",
+            { className: "panel-card" },
+            _react2.default.createElement(
+                "p",
+                null,
+                "This experiment has two parts."
+            ),
+            _react2.default.createElement(
+                "p",
+                null,
+                "In the first part, you'll cook alongside an AI chef \u2014 picking up ingredients, loading the pot, and delivering soup together. At certain moments, a prompt will appear asking you to predict what the AI chef will do next."
+            ),
+            _react2.default.createElement(
+                "p",
+                null,
+                "In the second part, we'll replay a scene from your first session. When a prompt appears, submit your expectation for what the AI chef was about to do at that moment."
+            )
+        ),
+        _react2.default.createElement(
+            "div",
+            { className: "mode-grid" },
+            _react2.default.createElement(_ModePlaybackCard2.default, {
+                title: "Collaborate",
+                description: "Cook with the AI chef. Submit your prediction when prompted.",
+                layoutGrid: props.session.layout_grid,
+                frames: demos.collaborate,
+                trial: collaborateTrial,
+                caption: "Live play"
+            }),
+            _react2.default.createElement(_ModePlaybackCard2.default, {
+                title: "Replay + Annotation",
+                description: "Watch the replay. Submit what you expected the AI chef to do.",
+                layoutGrid: props.session.layout_grid,
+                frames: demos.replay,
+                trial: replayTrial,
+                caption: "Replay"
+            })
+        ),
+        _react2.default.createElement(
+            "div",
+            { className: "stage-actions" },
+            _react2.default.createElement(
+                "button",
+                { className: "primary-button", type: "button", onClick: function onClick() {
+                        return props.onContinue({ reviewed_modes: true });
+                    } },
+                "Next"
+            )
+        )
+    );
+}
+
+},{"../components/ModePlaybackCard.jsx":26,"../utils.js":48,"react":8}],42:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+exports.default = OnboardingStage;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _atlas = require("../spa/atlas.js");
+
+var _utils = require("../utils.js");
+
+var _ModalShell = require("../components/ModalShell.jsx");
+
+var _ModalShell2 = _interopRequireDefault(_ModalShell);
+
+var _AtlasSprite = require("../components/AtlasSprite.jsx");
+
+var _AtlasSprite2 = _interopRequireDefault(_AtlasSprite);
+
+var _LoopingBoardPreview = require("../components/LoopingBoardPreview.jsx");
+
+var _LoopingBoardPreview2 = _interopRequireDefault(_LoopingBoardPreview);
+
+var _ObserveHeroPreview = require("../components/ObserveHeroPreview.jsx");
+
+var _ObserveHeroPreview2 = _interopRequireDefault(_ObserveHeroPreview);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function OnboardingStage(props) {
+    var guideSteps = [{ id: "move", title: "Move", body: "Use the arrow keys to move your chef." }, { id: "interact", title: "Interact", body: "Press the space bar to pick up, place, plate, or serve the object (tomato, onion, dish, soup)." }, { id: "probe", title: "Probe", body: "When a probe appears, choose the AI chef's next subtask, draw the route, and rate your confidence." }];
+    var previewSteps = [{ id: "collect_tomato", label: "Collect tomato" }, { id: "load_pot", label: "Load pot" }, { id: "manage_pot", label: "Manage pot" }, { id: "pickup_soup", label: "Pick up soup" }, { id: "serve_soup", label: "Serve soup" }];
+    var demoFrames = (0, _react.useMemo)(function () {
+        return (0, _utils.buildTutorialLoopFrames)();
+    }, []);
+    var probeFrames = (0, _react.useMemo)(function () {
+        return demoFrames.map(function (frame) {
+            return frame.state;
+        });
+    }, [demoFrames]);
+
+    var _useState = (0, _react.useState)(-1),
+        _useState2 = _slicedToArray(_useState, 2),
+        guideIndex = _useState2[0],
+        setGuideIndex = _useState2[1];
+
+    var activeGuide = guideSteps[guideIndex] || null;
+
+    function openGuide() {
+        setGuideIndex(0);
+    }
+
+    function finishOnboarding() {
+        props.onContinue({ reviewed_tutorial: true });
+    }
+
+    return _react2.default.createElement(
+        "div",
+        { className: "stage-stack" },
+        _react2.default.createElement(
+            "section",
+            { className: "panel-card" },
+            _react2.default.createElement(
+                "div",
+                { className: "panel-stack" },
+                _react2.default.createElement(
+                    "div",
+                    { className: "tutorial-preview-shell" },
+                    _react2.default.createElement(
+                        "div",
+                        { className: "tutorial-preview-shell__header" },
+                        _react2.default.createElement(
+                            "div",
+                            null,
+                            _react2.default.createElement(
+                                "div",
+                                { className: "panel-eyebrow" },
+                                "Before practice"
+                            ),
+                            _react2.default.createElement(
+                                "h3",
+                                null,
+                                "Watch one full cooking loop"
+                            )
+                        ),
+                        _react2.default.createElement(
+                            "p",
+                            null,
+                            "The active subtask lights up as the team moves through the recipe."
+                        )
+                    ),
+                    _react2.default.createElement(_LoopingBoardPreview2.default, {
+                        frames: demoFrames,
+                        steps: previewSteps,
+                        layoutGrid: props.session.layout_grid,
+                        trial: { human_player_index: 1, target_agent_index: 0, show_target_highlight: false },
+                        caption: "Gray chef: you. Orange chef: AI teammate."
+                    }),
+                    _react2.default.createElement(
+                        "div",
+                        { className: "key-row" },
+                        _react2.default.createElement(
+                            "div",
+                            { className: "key-chip" },
+                            "Arrow keys: move"
+                        ),
+                        _react2.default.createElement(
+                            "div",
+                            { className: "key-chip" },
+                            "Space: interact"
+                        )
+                    )
+                ),
+                _react2.default.createElement(
+                    "div",
+                    { className: "stage-actions" },
+                    _react2.default.createElement(
+                        "button",
+                        { className: "primary-button", type: "button", onClick: openGuide },
+                        "Next"
+                    )
+                )
+            )
+        ),
+        _react2.default.createElement(
+            _ModalShell2.default,
+            { open: guideIndex >= 0 && guideIndex < guideSteps.length, eyebrow: "Tutorial", title: activeGuide ? activeGuide.title : "Tutorial" },
+            _react2.default.createElement(
+                "div",
+                { className: "panel-stack" },
+                _react2.default.createElement(
+                    "p",
+                    null,
+                    activeGuide ? activeGuide.body : ""
+                ),
+                _react2.default.createElement(
+                    "div",
+                    { className: "guide-visual" + (activeGuide && activeGuide.id === "probe" ? " guide-visual--board" : "") },
+                    activeGuide && activeGuide.id === "move" ? _react2.default.createElement(
+                        "div",
+                        { className: "key-demo" },
+                        _react2.default.createElement(
+                            "div",
+                            { className: "keycap" },
+                            "\u2191"
+                        ),
+                        _react2.default.createElement(
+                            "div",
+                            { className: "keycap" },
+                            "\u2190"
+                        ),
+                        _react2.default.createElement(
+                            "div",
+                            { className: "keycap" },
+                            "\u2193"
+                        ),
+                        _react2.default.createElement(
+                            "div",
+                            { className: "keycap" },
+                            "\u2192"
+                        )
+                    ) : null,
+                    activeGuide && activeGuide.id === "interact" ? _react2.default.createElement(
+                        "div",
+                        { className: "guide-visual__interact" },
+                        _react2.default.createElement(
+                            "div",
+                            { className: "key-demo" },
+                            _react2.default.createElement(
+                                "div",
+                                { className: "keycap" },
+                                "Space"
+                            )
+                        ),
+                        _react2.default.createElement(
+                            "div",
+                            { className: "ingredient-strip" },
+                            _react2.default.createElement(_AtlasSprite2.default, { atlas: _atlas.OBJECTS_ATLAS, imageUrl: _atlas.OBJECTS_IMAGE_URL, frameName: "tomato.png", size: 34, className: "mini-sprite" }),
+                            _react2.default.createElement(_AtlasSprite2.default, { atlas: _atlas.OBJECTS_ATLAS, imageUrl: _atlas.OBJECTS_IMAGE_URL, frameName: "onion.png", size: 34, className: "mini-sprite" }),
+                            _react2.default.createElement(_AtlasSprite2.default, { atlas: _atlas.OBJECTS_ATLAS, imageUrl: _atlas.OBJECTS_IMAGE_URL, frameName: "dish.png", size: 34, className: "mini-sprite" }),
+                            _react2.default.createElement(_AtlasSprite2.default, { atlas: _atlas.OBJECTS_ATLAS, imageUrl: _atlas.OBJECTS_IMAGE_URL, frameName: "soup-tomato-dish.png", size: 34, className: "mini-sprite" })
+                        )
+                    ) : null,
+                    activeGuide && activeGuide.id === "probe" ? _react2.default.createElement(_ObserveHeroPreview2.default, {
+                        frames: probeFrames,
+                        layoutGrid: props.session.layout_grid,
+                        trial: { human_player_index: 1, target_agent_index: 0, probe: { count: 3, prompt: "What do you expect from the AI chef?", sketch_prompt: "Sketch the route you expected.", confidence_prompt: "How confident are you?" }, show_target_highlight: false },
+                        subtaskOptions: props.session.subtask_options,
+                        showProbe: true
+                    }) : null
+                ),
+                _react2.default.createElement(
+                    "div",
+                    { className: "stage-actions" },
+                    guideIndex < guideSteps.length - 1 ? _react2.default.createElement(
+                        "button",
+                        { className: "primary-button", type: "button", onClick: function onClick() {
+                                return setGuideIndex(guideIndex + 1);
+                            } },
+                        "Next"
+                    ) : _react2.default.createElement(
+                        "button",
+                        { className: "primary-button", type: "button", onClick: finishOnboarding },
+                        "Next"
+                    )
+                )
+            )
+        )
+    );
+}
+
+},{"../components/AtlasSprite.jsx":18,"../components/LoopingBoardPreview.jsx":24,"../components/ModalShell.jsx":25,"../components/ObserveHeroPreview.jsx":27,"../spa/atlas.js":36,"../utils.js":48,"react":8}],43:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = StaticStage;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function StaticStage(props) {
+    return _react2.default.createElement(
+        "div",
+        { className: "stage-stack" },
+        _react2.default.createElement(
+            "section",
+            { className: "panel-card" },
+            _react2.default.createElement(
+                "div",
+                { className: "panel-stack" },
+                props.stage.body.map(function (line, index) {
+                    return _react2.default.createElement(
+                        "p",
+                        { key: "static-" + index },
+                        line
+                    );
+                }),
+                _react2.default.createElement(
+                    "div",
+                    { className: "stage-actions" },
+                    _react2.default.createElement(
+                        "button",
+                        { className: "primary-button", type: "button", onClick: function onClick() {
+                                return props.onContinue({ acknowledged: true });
+                            } },
+                        "Continue"
+                    )
+                )
+            )
+        )
+    );
+}
+
+},{"react":8}],44:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+exports.default = SurveyStage;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _utils = require("../utils.js");
+
+var _InputField = require("../components/InputField.jsx");
+
+var _InputField2 = _interopRequireDefault(_InputField);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function SurveyStage(props) {
+    var initialValues = Object.assign({}, props.initialValues || {});
+    props.stage.questions.forEach(function (question) {
+        if (initialValues[question.id] === undefined) {
+            initialValues[question.id] = "";
+        }
+    });
+
+    var _useState = (0, _react.useState)(initialValues),
+        _useState2 = _slicedToArray(_useState, 2),
+        values = _useState2[0],
+        setValues = _useState2[1];
+
+    var _useState3 = (0, _react.useState)(""),
+        _useState4 = _slicedToArray(_useState3, 2),
+        error = _useState4[0],
+        setError = _useState4[1];
+
+    function updateField(field, event) {
+        var nextValues = Object.assign({}, values);
+        nextValues[field.id] = (0, _utils.fieldValueFromEvent)(field, event);
+        setValues(nextValues);
+    }
+
+    function submit() {
+        var missing = props.stage.questions.filter(function (question) {
+            return question.type !== "textarea" && !String(values[question.id] || "").trim();
+        });
+        if (missing.length) {
+            setError("Please answer all required questions.");
+            return;
+        }
+        props.onSubmit(values);
+    }
+
+    return _react2.default.createElement(
+        "div",
+        { className: "stage-stack" },
+        _react2.default.createElement(
+            "section",
+            { className: "panel-card panel-card--scroll" },
+            _react2.default.createElement(
+                "div",
+                { className: "panel-stack" },
+                props.stage.questions.map(function (question) {
+                    return _react2.default.createElement(_InputField2.default, { key: question.id, field: question, value: values[question.id], onChange: function onChange(event) {
+                            return updateField(question, event);
+                        } });
+                }),
+                error ? _react2.default.createElement(
+                    "div",
+                    { className: "callout callout--danger" },
+                    error
+                ) : null,
+                _react2.default.createElement(
+                    "div",
+                    { className: "stage-actions" },
+                    _react2.default.createElement(
+                        "button",
+                        { className: "primary-button", type: "button", onClick: submit },
+                        "Save and continue"
+                    )
+                )
+            )
+        )
+    );
+}
+
+},{"../components/InputField.jsx":21,"../utils.js":48,"react":8}],45:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+exports.default = TrialBlockStage;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _board = require("../spa/board.jsx");
+
+var _board2 = _interopRequireDefault(_board);
+
+var _InteractiveTrialRunner = require("../components/InteractiveTrialRunner.jsx");
+
+var _InteractiveTrialRunner2 = _interopRequireDefault(_InteractiveTrialRunner);
+
+var _ReplayTrialRunner = require("../components/ReplayTrialRunner.jsx");
+
+var _ReplayTrialRunner2 = _interopRequireDefault(_ReplayTrialRunner);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function TrialBlockStage(props) {
+    var trialIndex = props.runnerState.trialIndexByStage[props.stage.id] || 0;
+    var trialId = props.stage.trial_ids[trialIndex];
+    var trial = trialId ? props.session.trials[trialId] : null;
+
+    var _useState = (0, _react.useState)(false),
+        _useState2 = _slicedToArray(_useState, 2),
+        started = _useState2[0],
+        setStarted = _useState2[1];
+
+    (0, _react.useEffect)(function () {
+        setStarted(false);
+    }, [props.stage.id, trialId]);
+
+    if (!trial) {
+        return _react2.default.createElement(
+            "div",
+            { className: "stage-stack" },
+            _react2.default.createElement(
+                "div",
+                { className: "callout" },
+                "This block is complete."
+            ),
+            _react2.default.createElement(
+                "div",
+                { className: "stage-actions" },
+                _react2.default.createElement(
+                    "button",
+                    { className: "primary-button", type: "button", onClick: function onClick() {
+                            return props.onAdvanceEmptyBlock();
+                        } },
+                    "Continue"
+                )
+            )
+        );
+    }
+
+    if (started) {
+        if (trial.mode === "replay") {
+            return _react2.default.createElement(_ReplayTrialRunner2.default, {
+                trial: trial,
+                userInfo: props.userInfo,
+                subtaskOptions: props.session.subtask_options,
+                cachedTrajectory: props.trajectoryCache[trial.source_trial_id] || null,
+                onComplete: function onComplete(summary, trajectory) {
+                    setStarted(false);
+                    props.onTrialComplete(trial, summary, trajectory);
+                }
+            });
+        }
+        return _react2.default.createElement(_InteractiveTrialRunner2.default, {
+            trial: trial,
+            userInfo: props.userInfo,
+            subtaskOptions: props.session.subtask_options,
+            onComplete: function onComplete(summary, trajectory) {
+                setStarted(false);
+                props.onTrialComplete(trial, summary, trajectory);
+            }
+        });
+    }
+
+    return _react2.default.createElement(
+        "div",
+        { className: "stage-stack" },
+        _react2.default.createElement(
+            "section",
+            { className: "panel-card" },
+            _react2.default.createElement(
+                "div",
+                { className: "trial-start" },
+                _react2.default.createElement(
+                    "div",
+                    { className: "panel-eyebrow" },
+                    trial.mode.toUpperCase()
+                ),
+                _react2.default.createElement(
+                    "h3",
+                    null,
+                    trial.title
+                ),
+                _react2.default.createElement(
+                    "p",
+                    null,
+                    trial.instruction
+                ),
+                _react2.default.createElement(
+                    "div",
+                    { className: "trial-start__meta" },
+                    _react2.default.createElement(
+                        "span",
+                        null,
+                        "Trial ",
+                        trialIndex + 1,
+                        " / ",
+                        props.stage.trial_ids.length
+                    ),
+                    trial.mode === "observe" ? _react2.default.createElement(
+                        "span",
+                        null,
+                        "Watch the chef with the bold green focus box."
+                    ) : null
+                ),
+                _react2.default.createElement(
+                    "div",
+                    { className: "stage-actions" },
+                    _react2.default.createElement(
+                        "button",
+                        { className: "primary-button", type: "button", onClick: function onClick() {
+                                return setStarted(true);
+                            } },
+                        "Start trial"
+                    )
+                )
+            )
+        ),
+        _react2.default.createElement(
+            "section",
+            { className: "panel-card" },
+            _react2.default.createElement(_board2.default, {
+                layoutGrid: trial.layout_grid,
+                state: props.previewState,
+                trial: Object.assign({}, trial, { show_target_highlight: trial.mode !== "collaborate" }),
+                label: trial.title,
+                description: trial.instruction
+            })
+        )
+    );
+}
+
+},{"../components/InteractiveTrialRunner.jsx":22,"../components/ReplayTrialRunner.jsx":29,"../spa/board.jsx":37,"react":8}],46:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+exports.default = TutorialStage;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _board = require("../spa/board.jsx");
+
+var _board2 = _interopRequireDefault(_board);
+
+var _utils = require("../utils.js");
+
+var _ModalShell = require("../components/ModalShell.jsx");
+
+var _ModalShell2 = _interopRequireDefault(_ModalShell);
+
+var _ChefVisual = require("../components/ChefVisual.jsx");
+
+var _ChefVisual2 = _interopRequireDefault(_ChefVisual);
+
+var _IngredientStrip = require("../components/IngredientStrip.jsx");
+
+var _IngredientStrip2 = _interopRequireDefault(_IngredientStrip);
+
+var _InteractiveTrialRunner = require("../components/InteractiveTrialRunner.jsx");
+
+var _InteractiveTrialRunner2 = _interopRequireDefault(_InteractiveTrialRunner);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function TutorialStage(props) {
+    var trialIndex = props.runnerState.trialIndexByStage[props.stage.id] || 0;
+    var trialId = props.stage.trial_ids[trialIndex];
+    var trial = trialId ? props.session.trials[trialId] : null;
+
+    var _useState = (0, _react.useState)(props.initialValues && props.initialValues.team_goal_recipe_id || props.session.recipe_options[0].id),
+        _useState2 = _slicedToArray(_useState, 2),
+        selectedRecipeId = _useState2[0],
+        setSelectedRecipeId = _useState2[1];
+
+    var _useState3 = (0, _react.useState)(Boolean(props.initialValues && props.initialValues.team_goal_recipe_id)),
+        _useState4 = _slicedToArray(_useState3, 2),
+        savedSetup = _useState4[0],
+        setSavedSetup = _useState4[1];
+
+    var _useState5 = (0, _react.useState)(false),
+        _useState6 = _slicedToArray(_useState5, 2),
+        started = _useState6[0],
+        setStarted = _useState6[1];
+
+    var _useState7 = (0, _react.useState)(-1),
+        _useState8 = _slicedToArray(_useState7, 2),
+        briefIndex = _useState8[0],
+        setBriefIndex = _useState8[1];
+
+    var _useState9 = (0, _react.useState)(""),
+        _useState10 = _slicedToArray(_useState9, 2),
+        error = _useState10[0],
+        setError = _useState10[1];
+
+    (0, _react.useEffect)(function () {
+        setStarted(false);
+        setBriefIndex(-1);
+    }, [trialId]);
+
+    var briefingSteps = (0, _react.useMemo)(function () {
+        if (!trial) {
+            return [];
+        }
+        if (trial.id === "tutorial_solo") {
+            return [{
+                title: "You are the gray chef",
+                body: "First, practice the kitchen alone without help from the AI chef.",
+                visual: _react2.default.createElement(
+                    "div",
+                    { className: "role-card__visual" },
+                    _react2.default.createElement(_ChefVisual2.default, { hatColor: "gray" }),
+                    _react2.default.createElement(
+                        "span",
+                        { className: "ingredient-strip__plus" },
+                        "\u2192"
+                    ),
+                    _react2.default.createElement(_IngredientStrip2.default, { ingredients: ["tomato", "tomato", "tomato"] })
+                )
+            }, {
+                title: "Your team goal",
+                body: "The recipe you choose here will be used for the tutorial kitchen.",
+                visual: _react2.default.createElement(_IngredientStrip2.default, { ingredients: (props.session.recipe_options.find(function (recipe) {
+                        return recipe.id === selectedRecipeId;
+                    }) || props.session.recipe_options[0]).ingredients })
+            }, {
+                title: "Solo practice flow",
+                body: "Bring 3 ingredients to the pot, wait 20 seconds for cooking, pick up the soup with a dish, and deliver it."
+            }];
+        }
+        return [{
+            title: "Now cook with the AI chef",
+            body: "The orange chef is the AI teammate you will collaborate with and predict during the study.",
+            visual: _react2.default.createElement(
+                "div",
+                { className: "role-card__visual" },
+                _react2.default.createElement(_ChefVisual2.default, { hatColor: "gray" }),
+                _react2.default.createElement(
+                    "span",
+                    { className: "ingredient-strip__plus" },
+                    "+"
+                ),
+                _react2.default.createElement(_ChefVisual2.default, { hatColor: "orange" })
+            )
+        }, {
+            title: "Shared goal",
+            body: "Keep working toward the selected recipe together while the AI chef helps in the same kitchen.",
+            visual: _react2.default.createElement(_IngredientStrip2.default, { ingredients: (props.session.recipe_options.find(function (recipe) {
+                    return recipe.id === selectedRecipeId;
+                }) || props.session.recipe_options[0]).ingredients })
+        }, {
+            title: "Probe workflow",
+            body: "A practice probe will appear. Choose the AI chef's next subtask, draw the expected route, rate your confidence, then watch the actual behavior."
+        }];
+    }, [trial, props.session.recipe_options, selectedRecipeId]);
+
+    function persistSetup() {
+        return (0, _utils.apiPost)("/save_session_section", {
+            user_info: props.userInfo,
+            section_id: "tutorial_setup",
+            data: { team_goal_recipe_id: selectedRecipeId }
+        }).then(function () {
+            setSavedSetup(true);
+        });
+    }
+
+    function begin() {
+        persistSetup().then(function () {
+            setBriefIndex(0);
+        }).catch(function (saveError) {
+            setError(String(saveError.message || saveError));
+        });
+    }
+
+    if (!trial) {
+        return _react2.default.createElement(
+            "div",
+            { className: "stage-stack" },
+            _react2.default.createElement(
+                "div",
+                { className: "callout" },
+                "Tutorial complete."
+            ),
+            _react2.default.createElement(
+                "div",
+                { className: "stage-actions" },
+                _react2.default.createElement(
+                    "button",
+                    { className: "primary-button", type: "button", onClick: function onClick() {
+                            return props.onComplete({ tutorial_complete: true, team_goal_recipe_id: selectedRecipeId });
+                        } },
+                    "Continue"
+                )
+            )
+        );
+    }
+
+    if (started) {
+        return _react2.default.createElement(_InteractiveTrialRunner2.default, {
+            trial: trial,
+            userInfo: props.userInfo,
+            subtaskOptions: props.session.subtask_options,
+            onComplete: function onComplete(summary, trajectory) {
+                setStarted(false);
+                props.onTrialComplete(trial, summary, trajectory);
+            }
+        });
+    }
+
+    return _react2.default.createElement(
+        "div",
+        { className: "stage-stack" },
+        _react2.default.createElement(
+            "section",
+            { className: "panel-card" },
+            _react2.default.createElement(
+                "div",
+                { className: "role-grid" },
+                _react2.default.createElement(
+                    "div",
+                    { className: "role-card role-card--human" },
+                    _react2.default.createElement(
+                        "div",
+                        { className: "panel-eyebrow" },
+                        "You"
+                    ),
+                    _react2.default.createElement(
+                        "div",
+                        { className: "role-card__visual" },
+                        _react2.default.createElement(_ChefVisual2.default, { hatColor: "gray" })
+                    ),
+                    _react2.default.createElement(
+                        "h3",
+                        null,
+                        "Gray chef"
+                    ),
+                    _react2.default.createElement(
+                        "p",
+                        null,
+                        "You control the gray chef."
+                    )
+                ),
+                _react2.default.createElement(
+                    "div",
+                    { className: "role-card role-card--ai" },
+                    _react2.default.createElement(
+                        "div",
+                        { className: "panel-eyebrow" },
+                        "AI chef"
+                    ),
+                    _react2.default.createElement(
+                        "div",
+                        { className: "role-card__visual" },
+                        _react2.default.createElement(_ChefVisual2.default, { hatColor: "orange" })
+                    ),
+                    _react2.default.createElement(
+                        "h3",
+                        null,
+                        "Orange-highlighted chef"
+                    ),
+                    _react2.default.createElement(
+                        "p",
+                        null,
+                        "The AI chef is the one you observe and predict during probes."
+                    )
+                )
+            ),
+            _react2.default.createElement(
+                "div",
+                { className: "section-block" },
+                _react2.default.createElement(
+                    "div",
+                    { className: "section-block__title" },
+                    "Set the team goal"
+                ),
+                _react2.default.createElement(
+                    "div",
+                    { className: "recipe-grid" },
+                    props.session.recipe_options.map(function (recipe) {
+                        return _react2.default.createElement(
+                            "button",
+                            {
+                                className: "recipe-card" + (selectedRecipeId === recipe.id ? " is-selected" : ""),
+                                key: recipe.id,
+                                type: "button",
+                                onClick: function onClick() {
+                                    return setSelectedRecipeId(recipe.id);
+                                }
+                            },
+                            _react2.default.createElement(
+                                "div",
+                                { className: "recipe-card__visual" },
+                                _react2.default.createElement(_IngredientStrip2.default, { ingredients: recipe.ingredients })
+                            ),
+                            _react2.default.createElement(
+                                "div",
+                                { className: "recipe-card__short" },
+                                recipe.short_label
+                            ),
+                            _react2.default.createElement(
+                                "strong",
+                                null,
+                                recipe.label
+                            ),
+                            _react2.default.createElement(
+                                "span",
+                                null,
+                                recipe.points,
+                                " points"
+                            )
+                        );
+                    })
+                )
+            ),
+            _react2.default.createElement(
+                "div",
+                { className: "section-block" },
+                _react2.default.createElement(
+                    "div",
+                    { className: "section-block__title" },
+                    "How tutorial works"
+                ),
+                _react2.default.createElement(
+                    "div",
+                    { className: "tutorial-steps" },
+                    _react2.default.createElement(
+                        "div",
+                        null,
+                        "1. Practice cooking alone first."
+                    ),
+                    _react2.default.createElement(
+                        "div",
+                        null,
+                        "2. Practice once more with the AI chef."
+                    ),
+                    _react2.default.createElement(
+                        "div",
+                        null,
+                        "3. Try the probe workflow before the main session."
+                    )
+                )
+            ),
+            error ? _react2.default.createElement(
+                "div",
+                { className: "callout callout--danger" },
+                error
+            ) : null,
+            _react2.default.createElement(
+                "div",
+                { className: "stage-actions" },
+                _react2.default.createElement(
+                    "button",
+                    { className: "primary-button", type: "button", onClick: begin },
+                    savedSetup ? "Start next tutorial trial" : "Save goal and start tutorial"
+                )
+            )
+        ),
+        _react2.default.createElement(
+            "section",
+            { className: "panel-card" },
+            _react2.default.createElement(_board2.default, {
+                layoutGrid: props.session.layout_grid,
+                state: props.previewState,
+                trial: { human_player_index: 1, target_agent_index: 0, show_target_highlight: false },
+                label: "Tutorial",
+                description: "Practice the kitchen before the main session."
+            })
+        ),
+        _react2.default.createElement(
+            _ModalShell2.default,
+            { open: briefIndex >= 0 && briefIndex < briefingSteps.length, eyebrow: "Tutorial", title: briefingSteps[briefIndex] ? briefingSteps[briefIndex].title : "Tutorial" },
+            _react2.default.createElement(
+                "div",
+                { className: "panel-stack" },
+                briefingSteps[briefIndex] && briefingSteps[briefIndex].visual ? _react2.default.createElement(
+                    "div",
+                    { className: "guide-visual" },
+                    briefingSteps[briefIndex].visual
+                ) : null,
+                _react2.default.createElement(
+                    "p",
+                    null,
+                    briefingSteps[briefIndex] ? briefingSteps[briefIndex].body : ""
+                ),
+                _react2.default.createElement(
+                    "div",
+                    { className: "stage-actions" },
+                    briefIndex < briefingSteps.length - 1 ? _react2.default.createElement(
+                        "button",
+                        { className: "primary-button", type: "button", onClick: function onClick() {
+                                return setBriefIndex(briefIndex + 1);
+                            } },
+                        "Next"
+                    ) : _react2.default.createElement(
+                        "button",
+                        { className: "primary-button", type: "button", onClick: function onClick() {
+                                setBriefIndex(briefingSteps.length);setStarted(true);
+                            } },
+                        "Start tutorial"
+                    )
+                )
+            )
+        )
+    );
+}
+
+},{"../components/ChefVisual.jsx":19,"../components/IngredientStrip.jsx":20,"../components/InteractiveTrialRunner.jsx":22,"../components/ModalShell.jsx":25,"../spa/board.jsx":37,"../utils.js":48,"react":8}],47:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.default = WelcomeStage;
+
+var _react = require("react");
+
+var _react2 = _interopRequireDefault(_react);
+
+var _utils = require("../utils.js");
+
+var _ObserveHeroPreview = require("../components/ObserveHeroPreview.jsx");
+
+var _ObserveHeroPreview2 = _interopRequireDefault(_ObserveHeroPreview);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function WelcomeStage(props) {
+    var demos = (0, _react.useMemo)(function () {
+        return (0, _utils.buildModeDemoFrames)();
+    }, []);
+    var observeTrial = props.session.trials.observe_1 || props.session.trials.tutorial_team;
+    return _react2.default.createElement(
+        "div",
+        { className: "stage-stack" },
+        _react2.default.createElement(
+            "div",
+            { className: "hero-task-grid" },
+            _react2.default.createElement(
+                "div",
+                { className: "hero-task-card" },
+                _react2.default.createElement(
+                    "div",
+                    { className: "hero-task-card__preview" },
+                    _react2.default.createElement(_ObserveHeroPreview2.default, {
+                        frames: demos.observe,
+                        layoutGrid: props.session.layout_grid,
+                        trial: observeTrial,
+                        subtaskOptions: props.session.subtask_options,
+                        showProbe: false,
+                        tileSize: 48
+                    })
+                ),
+                _react2.default.createElement(
+                    "h3",
+                    null,
+                    "Cook with a AI chef"
+                ),
+                _react2.default.createElement(
+                    "p",
+                    null,
+                    "Cook onion/tomato soup and deliver it with a AI chef"
+                )
+            ),
+            _react2.default.createElement(
+                "div",
+                { className: "hero-task-card" },
+                _react2.default.createElement(
+                    "div",
+                    { className: "hero-task-card__preview" },
+                    _react2.default.createElement(_ObserveHeroPreview2.default, {
+                        frames: demos.observe,
+                        layoutGrid: props.session.layout_grid,
+                        trial: observeTrial,
+                        subtaskOptions: props.session.subtask_options,
+                        showProbe: true
+                    })
+                ),
+                _react2.default.createElement(
+                    "h3",
+                    null,
+                    "Submit your expected strategy of the AI chef"
+                ),
+                _react2.default.createElement(
+                    "p",
+                    null,
+                    "Choose the subtask you expect for the AI chef and sketch the route"
+                )
+            )
+        ),
+        _react2.default.createElement(
+            "div",
+            { className: "stage-actions" },
+            _react2.default.createElement(
+                "button",
+                { className: "primary-button", type: "button", onClick: function onClick() {
+                        return props.onContinue({ seen: true });
+                    } },
+                "Start briefing"
+            )
+        )
+    );
+}
+
+},{"../components/ObserveHeroPreview.jsx":27,"../utils.js":48,"react":8}],48:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.apiPost = apiPost;
+exports.readJsonStorage = readJsonStorage;
+exports.writeJsonStorage = writeJsonStorage;
+exports.clearJsonStorage = clearJsonStorage;
+exports.dedupe = dedupe;
+exports.removeValue = removeValue;
+exports.buildPreviewState = buildPreviewState;
+exports.buildMockState = buildMockState;
+exports.makePlayer = makePlayer;
+exports.makeObject = makeObject;
+exports.makeTrajId = makeTrajId;
+exports.atlasStyle = atlasStyle;
+exports.fieldValueFromEvent = fieldValueFromEvent;
+exports.hasValue = hasValue;
+exports.normalizeChoiceValue = normalizeChoiceValue;
+exports.normalizeChoiceLabel = normalizeChoiceLabel;
+exports.getDefaultRunnerState = getDefaultRunnerState;
+exports.nextIncompleteStageIndex = nextIncompleteStageIndex;
+exports.buildRunnerStateFromServer = buildRunnerStateFromServer;
+exports.splitStageHeading = splitStageHeading;
+exports.buildPreviewExpectation = buildPreviewExpectation;
+exports.buildModeDemoFrames = buildModeDemoFrames;
+exports.buildTutorialLoopFrames = buildTutorialLoopFrames;
+
+var _atlas = require("./spa/atlas.js");
+
+// --- API ---
+
+function apiPost(url, payload) {
+    return window.fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: payload ? JSON.stringify(payload) : null
+    }).then(function (response) {
+        return response.text().then(function (text) {
+            if (!response.ok) {
+                throw new Error(text || "Request failed: " + response.status);
+            }
+            return text ? JSON.parse(text) : {};
+        });
+    });
+}
+
+// --- Session storage ---
+
+function readJsonStorage(key) {
+    try {
+        return JSON.parse(window.sessionStorage.getItem(key) || "null");
+    } catch (error) {
+        return null;
+    }
+}
+
+function writeJsonStorage(key, value) {
+    window.sessionStorage.setItem(key, JSON.stringify(value));
+}
+
+function clearJsonStorage(key) {
+    window.sessionStorage.removeItem(key);
+}
+
+// --- Array helpers ---
+
+function dedupe(values) {
+    return values.filter(function (value, index) {
+        return values.indexOf(value) === index;
+    });
+}
+
+function removeValue(values, value) {
+    return values.filter(function (item) {
+        return item !== value;
+    });
+}
+
+// --- Game state builders ---
+
+function buildPreviewState(layoutGrid) {
+    var players = [null, null];
+    layoutGrid.forEach(function (row, y) {
+        row.split("").forEach(function (symbol, x) {
+            if (symbol === "1" || symbol === "2") {
+                players[Number(symbol) - 1] = {
+                    position: [x, y],
+                    orientation: [0, 1],
+                    held_object: null
+                };
+            }
+        });
+    });
+    return {
+        players: players.filter(Boolean),
+        objects: [],
+        bonus_orders: [],
+        all_orders: [],
+        timestep: 0
+    };
+}
+
+function buildMockState(players, objects, timestep) {
+    return {
+        players: players,
+        objects: objects || [],
+        bonus_orders: [],
+        all_orders: [],
+        timestep: timestep || 0
+    };
+}
+
+function makePlayer(position, orientation, heldObject) {
+    return {
+        position: position,
+        orientation: orientation,
+        held_object: heldObject || null
+    };
+}
+
+function makeObject(name, position, extra) {
+    var obj = { name: name, position: position };
+    return Object.assign(obj, extra || {});
+}
+
+function makeTrajId(trialId) {
+    var now = new Date();
+    return trialId + "_" + [now.getFullYear(), now.getMonth() + 1, now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds()].join("-");
+}
+
+// --- Atlas / sprite ---
+
+function atlasStyle(atlas, imageUrl, frameName, size, opacity) {
+    var frame = (0, _atlas.getFrame)(atlas, frameName);
+    var base = { width: size, height: size };
+    if (opacity !== undefined) {
+        base.opacity = opacity;
+    }
+    if (!frame) {
+        return base;
+    }
+    var frameDef = frame.frame;
+    var scale = size / frameDef.w;
+    return Object.assign(base, {
+        backgroundImage: 'url("' + imageUrl + '")',
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "-" + String(frameDef.x * scale) + "px -" + String(frameDef.y * scale) + "px",
+        backgroundSize: String(atlas.meta.size.w * scale) + "px " + String(atlas.meta.size.h * scale) + "px",
+        imageRendering: "pixelated"
+    });
+}
+
+// --- Form helpers ---
+
+function fieldValueFromEvent(field, event) {
+    return event.target.value;
+}
+
+function hasValue(value) {
+    if (value === null || value === undefined) {
+        return false;
+    }
+    if (typeof value === "boolean") {
+        return true;
+    }
+    return String(value).trim().length > 0;
+}
+
+function normalizeChoiceValue(value) {
+    if (value === true) {
+        return "yes";
+    }
+    if (value === false) {
+        return "no";
+    }
+    return value === null || value === undefined ? "" : String(value);
+}
+
+function normalizeChoiceLabel(label, value) {
+    if (typeof label === "boolean") {
+        return label ? "Yes" : "No";
+    }
+    if (label !== null && label !== undefined && String(label).trim().length > 0) {
+        return String(label);
+    }
+    if (value === true) {
+        return "Yes";
+    }
+    if (value === false) {
+        return "No";
+    }
+    return String(value);
+}
+
+// --- Runner state ---
+
+function getDefaultRunnerState(session) {
+    var trialIndexByStage = {};
+    session.stages.forEach(function (stage) {
+        if (stage.type === "trial_block" || stage.type === "tutorial_lab") {
+            trialIndexByStage[stage.id] = 0;
+        }
+    });
+    return {
+        stageIndex: 0,
+        trialIndexByStage: trialIndexByStage,
+        completedStages: [],
+        completedTrials: {},
+        trialSummaries: {},
+        sectionResponses: {}
+    };
+}
+
+function nextIncompleteStageIndex(session, completedStages, fallbackIndex) {
+    if (typeof fallbackIndex === "number" && fallbackIndex >= 0 && fallbackIndex < session.stages.length) {
+        if (completedStages.indexOf(session.stages[fallbackIndex].id) < 0) {
+            return fallbackIndex;
+        }
+    }
+    for (var index = 0; index < session.stages.length; index += 1) {
+        if (completedStages.indexOf(session.stages[index].id) < 0) {
+            return index;
+        }
+    }
+    return session.stages.length;
+}
+
+function buildRunnerStateFromServer(session, bundle, userInfo) {
+    var state = getDefaultRunnerState(session);
+    var progress = bundle.progress || {};
+    var savedTrials = bundle.saved_trials || {};
+    var savedSections = bundle.saved_sections || {};
+    var hintedIndex = 0;
+
+    Object.keys(savedSections).forEach(function (sectionId) {
+        state.sectionResponses[sectionId] = savedSections[sectionId];
+    });
+
+    session.stages.forEach(function (stage, index) {
+        if (stage.type === "trial_block" || stage.type === "tutorial_lab") {
+            var completedCount = 0;
+            stage.trial_ids.forEach(function (trialId) {
+                var trialRecord = savedTrials[trialId];
+                if (trialRecord && trialRecord.finished_at) {
+                    completedCount += 1;
+                    state.completedTrials[trialId] = true;
+                    if (trialRecord.trial_summary) {
+                        state.trialSummaries[trialId] = trialRecord.trial_summary;
+                    }
+                }
+            });
+            state.trialIndexByStage[stage.id] = completedCount;
+            if (completedCount >= stage.trial_ids.length && stage.trial_ids.length > 0) {
+                state.completedStages = dedupe(state.completedStages.concat([stage.id]));
+            }
+        } else if (savedSections[stage.id]) {
+            state.completedStages = dedupe(state.completedStages.concat([stage.id]));
+        }
+        if (progress.current_stage_id && progress.current_stage_id === stage.id) {
+            hintedIndex = index;
+        }
+    });
+
+    state.completedStages = dedupe((progress.completed_stage_ids || []).concat(state.completedStages));
+    if (!userInfo || !userInfo.name) {
+        state.stageIndex = 0;
+        return state;
+    }
+    state.stageIndex = nextIncompleteStageIndex(session, state.completedStages, hintedIndex);
+    return state;
+}
+
+// --- Stage heading ---
+
+function splitStageHeading(stage) {
+    if (!stage) {
+        return { eyebrow: "", title: "Session complete" };
+    }
+    var blockMatch = stage.title.match(/^(Main Block \d+):\s*(.+)$/);
+    if (blockMatch) {
+        return { eyebrow: blockMatch[1], title: blockMatch[2] };
+    }
+    return { eyebrow: "", title: stage.title };
+}
+
+// --- Demo frame builders ---
+
+function buildPreviewExpectation(stepIndex, state, targetAgentIndex) {
+    var targetPlayer = state && state.players ? state.players[targetAgentIndex] : null;
+    var startPosition = targetPlayer ? targetPlayer.position : [8, 3];
+    var route = [[startPosition[0] - 1, startPosition[1]], [startPosition[0] - 2, startPosition[1]], [startPosition[0] - 2, startPosition[1] - 1]];
+    var pages = [{ pageIndex: 0, selectedSubtaskId: "collect_tomato", pathPoints: [], confidence: "", cursorLeft: "74%", cursorTop: "42%" }, { pageIndex: 1, selectedSubtaskId: "collect_tomato", pathPoints: route, confidence: "", cursorLeft: "64%", cursorTop: "72%" }, { pageIndex: 2, selectedSubtaskId: "collect_tomato", pathPoints: route, confidence: 6, cursorLeft: "78%", cursorTop: "86%" }];
+    return pages[stepIndex % pages.length];
+}
+
+function buildModeDemoFrames() {
+    return {
+        observe: [buildMockState([makePlayer([8, 3], [0, -1]), makePlayer([4, 3], [1, 0])], [makeObject("tomato", [5, 1])], 0), buildMockState([makePlayer([8, 2], [0, -1]), makePlayer([5, 3], [1, 0])], [makeObject("tomato", [5, 1])], 1), buildMockState([makePlayer([8, 1], [-1, 0], makeObject("dish", [0, 0])), makePlayer([6, 3], [0, -1], makeObject("tomato", [0, 0]))], [], 2)],
+        collaborate: [buildMockState([makePlayer([4, 3], [1, 0], makeObject("tomato", [0, 0])), makePlayer([8, 3], [-1, 0])], [], 0), buildMockState([makePlayer([5, 3], [0, -1], makeObject("tomato", [0, 0])), makePlayer([8, 2], [-1, 0])], [], 1), buildMockState([makePlayer([5, 3], [1, 0]), makePlayer([8, 2], [-1, 0], makeObject("dish", [0, 0]))], [makeObject("soup", [6, 2], { _ingredients: [{ name: "tomato" }, { name: "tomato" }, { name: "tomato" }], is_cooking: true })], 2), buildMockState([makePlayer([7, 2], [-1, 0]), makePlayer([8, 2], [-1, 0], makeObject("dish", [0, 0]))], [makeObject("soup", [6, 2], { _ingredients: [{ name: "tomato" }, { name: "tomato" }, { name: "tomato" }], is_ready: true })], 3), buildMockState([makePlayer([7, 3], [1, 0]), makePlayer([10, 3], [-1, 0], makeObject("soup", [0, 0]))], [], 4)],
+        replay: [buildMockState([makePlayer([7, 2], [-1, 0]), makePlayer([8, 2], [-1, 0], makeObject("dish", [0, 0]))], [makeObject("soup", [6, 2], { _ingredients: [{ name: "tomato" }, { name: "tomato" }, { name: "tomato" }], is_ready: true })], 0), buildMockState([makePlayer([7, 2], [0, -1], makeObject("soup", [0, 0])), makePlayer([8, 2], [-1, 0])], [], 1), buildMockState([makePlayer([8, 2], [0, 1], makeObject("soup", [0, 0])), makePlayer([8, 3], [-1, 0])], [], 2), buildMockState([makePlayer([9, 3], [1, 0], makeObject("soup", [0, 0])), makePlayer([8, 3], [-1, 0])], [], 3), buildMockState([makePlayer([10, 3], [1, 0]), makePlayer([8, 3], [1, 0])], [], 4)]
+    };
+}
+
+function buildTutorialLoopFrames() {
+    return [{ state: buildMockState([makePlayer([4, 3], [1, 0], makeObject("tomato", [0, 0])), makePlayer([8, 3], [-1, 0])], [], 0), activeSubtaskId: "collect_tomato" }, { state: buildMockState([makePlayer([5, 3], [0, -1], makeObject("tomato", [0, 0])), makePlayer([8, 3], [-1, 0])], [], 1), activeSubtaskId: "load_pot" }, { state: buildMockState([makePlayer([5, 3], [1, 0]), makePlayer([8, 2], [-1, 0])], [makeObject("soup", [6, 2], { _ingredients: [{ name: "tomato" }, { name: "tomato" }, { name: "tomato" }], is_cooking: true })], 2), activeSubtaskId: "manage_pot" }, { state: buildMockState([makePlayer([7, 2], [-1, 0]), makePlayer([8, 2], [-1, 0], makeObject("dish", [0, 0]))], [makeObject("soup", [6, 2], { _ingredients: [{ name: "tomato" }, { name: "tomato" }, { name: "tomato" }], is_ready: true })], 3), activeSubtaskId: "pickup_soup" }, { state: buildMockState([makePlayer([7, 3], [1, 0]), makePlayer([10, 3], [-1, 0], makeObject("soup", [0, 0]))], [], 4), activeSubtaskId: "serve_soup" }];
+}
+
+},{"./spa/atlas.js":36}]},{},[35]);

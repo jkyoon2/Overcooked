@@ -1,0 +1,3 @@
+node_modules/
+static/js/demo/demo.js.tmp-browserify-*
+static/js/demo/replay.js.tmp-browserify-*

@@ -1,0 +1,88 @@
+import React, { useState } from "react";
+import { apiPost, writeJsonStorage, fieldValueFromEvent, hasValue, normalizeChoiceValue } from "../utils.js";
+import InputField from "../components/InputField.jsx";
+
+export default function ConsentStage(props) {
+    const initialValues = {};
+    props.intakeForm.sections.forEach((section) => {
+        section.fields.forEach((field) => {
+            initialValues[field.id] = props.userInfo && Object.prototype.hasOwnProperty.call(props.userInfo, field.id)
+                ? normalizeChoiceValue(props.userInfo[field.id])
+                : "";
+        });
+    });
+    initialValues.consent = false;
+
+    const [values, setValues] = useState(initialValues);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState("");
+
+    function updateField(field, event) {
+        const nextValues = Object.assign({}, values);
+        nextValues[field.id] = fieldValueFromEvent(field, event);
+        setValues(nextValues);
+        setError("");
+    }
+
+    function submit() {
+        const missing = [];
+        props.intakeForm.sections.forEach((section) => {
+            section.fields.forEach((field) => {
+                if (field.required && !hasValue(values[field.id])) {
+                    missing.push(field.label);
+                }
+            });
+        });
+        if (!values.consent) {
+            missing.push("Consent");
+        }
+        if (missing.length) {
+            setError("Please complete all required items.");
+            return;
+        }
+        setError("");
+        setSubmitting(true);
+        apiPost("/create_questionnaire_before_game", values).then(() => {
+            writeJsonStorage("before_game", values);
+            return Promise.resolve(props.onSubmit(values));
+        }).catch((submitError) => {
+            setSubmitting(false);
+            setError(String(submitError.message || submitError));
+        });
+    }
+
+    return (
+        <div className="stage-stack">
+            <section className="panel-card panel-card--scroll">
+                <div className="panel-stack">
+                    {props.intakeForm.sections.map((section) => (
+                        <div className="section-block" key={section.id}>
+                            <div className="section-block__title">{section.title}</div>
+                            {section.fields.map((field) => (
+                                <InputField key={field.id} field={field} value={values[field.id]} onChange={(event) => updateField(field, event)} />
+                            ))}
+                        </div>
+                    ))}
+                    <label className={"toggle-card" + (values.consent ? " is-selected" : "")}>
+                        <input
+                            type="checkbox"
+                            checked={Boolean(values.consent)}
+                            onChange={() => {
+                                setValues(Object.assign({}, values, { consent: !values.consent }));
+                                setError("");
+                            }}
+                        />
+                        <span className={"toggle-card__check" + (values.consent ? " is-checked" : "")}>{values.consent ? "✓" : ""}</span>
+                        <span>I agree to participate in this study.</span>
+                    </label>
+                    {error ? <div className="callout callout--danger">{error}</div> : null}
+                    <div className="stage-actions">
+                        <button className="primary-button" type="button" disabled={submitting} onClick={submit}>
+                            {submitting ? "Saving..." : "Continue"}
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    );
+}

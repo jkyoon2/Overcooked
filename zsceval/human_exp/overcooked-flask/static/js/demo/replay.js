@@ -10722,6 +10722,43 @@ return jQuery;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+var TIMESTEP_MS = exports.TIMESTEP_MS = 220;
+var PREVIEW_LOOP_MS = exports.PREVIEW_LOOP_MS = 1280;
+var REPLAY_TIMESTEP_MS = exports.REPLAY_TIMESTEP_MS = 260;
+var DEFAULT_ACTION_IDX = exports.DEFAULT_ACTION_IDX = 4;
+
+var DIRECTION_KEY_CODES = exports.DIRECTION_KEY_CODES = {
+    37: 3,
+    38: 0,
+    39: 2,
+    40: 1,
+    65: 3,
+    68: 2,
+    83: 1,
+    87: 0
+};
+
+var INTERACT_KEY_CODES = exports.INTERACT_KEY_CODES = {
+    13: true,
+    32: true
+};
+
+var TERRAIN_SYMBOL_MAP = exports.TERRAIN_SYMBOL_MAP = {
+    X: { cssClass: "counter", label: "Counter", frame: "counter.png" },
+    O: { cssClass: "onion", label: "Onion", frame: "onions.png" },
+    T: { cssClass: "tomato", label: "Tomato", frame: "tomatoes.png" },
+    D: { cssClass: "dish", label: "Dish", frame: "dishes.png" },
+    P: { cssClass: "pot", label: "Pot", frame: "pot.png" },
+    S: { cssClass: "serve", label: "Serve", frame: "serve.png" }
+};
+var DEFAULT_TERRAIN = exports.DEFAULT_TERRAIN = { cssClass: "floor", label: "", frame: "floor.png" };
+
+},{}],3:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
@@ -10729,46 +10766,18 @@ var _jquery = require("jquery");
 
 var _jquery2 = _interopRequireDefault(_jquery);
 
+var _constants = require("../constants.js");
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 function terrainClass(symbol) {
-    switch (symbol) {
-        case "X":
-            return "counter";
-        case "O":
-            return "onion";
-        case "T":
-            return "tomato";
-        case "D":
-            return "dish";
-        case "P":
-            return "pot";
-        case "S":
-            return "serve";
-        default:
-            return "floor";
-    }
+    return (_constants.TERRAIN_SYMBOL_MAP[symbol] || _constants.DEFAULT_TERRAIN).cssClass;
 }
 
 function terrainLabel(symbol) {
-    switch (symbol) {
-        case "O":
-            return "Onion";
-        case "T":
-            return "Tomato";
-        case "D":
-            return "Dish";
-        case "P":
-            return "Pot";
-        case "S":
-            return "Serve";
-        case "X":
-            return "Counter";
-        default:
-            return "";
-    }
+    return (_constants.TERRAIN_SYMBOL_MAP[symbol] || _constants.DEFAULT_TERRAIN).label;
 }
 
 function orientationLabel(orientation) {
@@ -10998,7 +11007,7 @@ var OvercookedBoardRenderer = function () {
 
 exports.default = OvercookedBoardRenderer;
 
-},{"jquery":1}],3:[function(require,module,exports){
+},{"../constants.js":2,"jquery":1}],4:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -11011,6 +11020,8 @@ var _boardRenderer = require("./board-renderer");
 
 var _boardRenderer2 = _interopRequireDefault(_boardRenderer);
 
+var _constants = require("../constants.js");
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -11021,7 +11032,7 @@ var OvercookedTrajectoryReplay = function () {
             trajectory = _ref.trajectory,
             start_grid = _ref.start_grid,
             _ref$TIMESTEP = _ref.TIMESTEP,
-            TIMESTEP = _ref$TIMESTEP === undefined ? 180 : _ref$TIMESTEP,
+            TIMESTEP = _ref$TIMESTEP === undefined ? _constants.REPLAY_TIMESTEP_MS : _ref$TIMESTEP,
             _ref$cook_time = _ref.cook_time,
             cook_time = _ref$cook_time === undefined ? 20 : _ref$cook_time,
             _ref$init_orders = _ref.init_orders,
@@ -11138,7 +11149,7 @@ var OvercookedTrajectoryReplay = function () {
 
 exports.default = OvercookedTrajectoryReplay;
 
-},{"./board-renderer":2}],4:[function(require,module,exports){
+},{"../constants.js":2,"./board-renderer":3}],5:[function(require,module,exports){
 "use strict";
 
 var _jquery = require("jquery");
@@ -11275,4 +11286,4 @@ function disableEnter() {
     enableEnter();
 });
 
-},{"./js/overcooked-replay.js":3,"jquery":1}]},{},[4]);
+},{"./js/overcooked-replay.js":4,"jquery":1}]},{},[5]);

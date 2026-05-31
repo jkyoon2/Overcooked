@@ -26,23 +26,10 @@ export function orientationToFrame(orientation) {
     }
 }
 
+import { TERRAIN_SYMBOL_MAP, DEFAULT_TERRAIN } from "../constants.js";
+
 export function terrainSymbolToFrame(symbol) {
-    switch (symbol) {
-        case "X":
-            return "counter.png";
-        case "O":
-            return "onions.png";
-        case "T":
-            return "tomatoes.png";
-        case "D":
-            return "dishes.png";
-        case "P":
-            return "pot.png";
-        case "S":
-            return "serve.png";
-        default:
-            return "floor.png";
-    }
+    return (TERRAIN_SYMBOL_MAP[symbol] || DEFAULT_TERRAIN).frame;
 }
 
 export function getFrame(atlas, frameName) {
