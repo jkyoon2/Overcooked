@@ -5,25 +5,35 @@ from typing import Iterator
 
 import pytest
 
-from backend.game.ai_loader import HSPPolicy, load_policy
+from backend.game.ai_loader import (
+    HSPPolicy,
+    _resolve_checkpoint_paths,
+    load_policy,
+)
 from backend.game.engine import ACTION_MAP, OvercookedEngine
 
 
 @pytest.fixture(scope="module")
-def tomato_policy() -> Iterator[HSPPolicy]:
-    policy = load_policy("tomato")
+def primary_policy() -> Iterator[HSPPolicy]:
+    policy = load_policy("tto_sp_seed4")
     assert isinstance(policy, HSPPolicy)
     yield policy
 
 
 @pytest.mark.parametrize(
-    ("checkpoint_id", "layout_name"),
+    ("checkpoint_id", "layout_name", "step"),
     [
-        ("tomato", "ttt"),
-        ("onion", "ooo"),
+        ("tto_sp_seed4", "tto", 10_000_000),
+        ("tto_sp_seed5", "tto", 10_000_000),
+        ("ttt_adaptive_seed1", "ttt", 50_000_000),
+        ("ttt_adaptive_seed2", "ttt", 50_000_000),
     ],
 )
-def test_hsp_policy_returns_valid_action(checkpoint_id: str, layout_name: str) -> None:
+def test_requested_policy_returns_valid_action(
+    checkpoint_id: str,
+    layout_name: str,
+    step: int,
+) -> None:
     policy = load_policy(checkpoint_id)
     engine = OvercookedEngine(layout_name=layout_name, ai_checkpoint_id=None)
     engine.reset()
@@ -33,31 +43,45 @@ def test_hsp_policy_returns_valid_action(checkpoint_id: str, layout_name: str) -
     action = policy.act(state)
 
     assert action in ACTION_MAP.values()
+    assert policy.paths.layout_name == layout_name
+    assert policy.paths.step == step
 
 
-def test_hsp_policy_is_deterministic(tomato_policy: HSPPolicy) -> None:
-    engine = OvercookedEngine(layout_name="ttt", ai_checkpoint_id=None)
+def test_hsp_policy_is_deterministic(primary_policy: HSPPolicy) -> None:
+    engine = OvercookedEngine(layout_name="tto", ai_checkpoint_id=None)
     engine.reset()
     state = engine.current_state
     assert state is not None
 
-    action_1 = tomato_policy.act(state)
-    action_2 = tomato_policy.act(state)
+    action_1 = primary_policy.act(state)
+    action_2 = primary_policy.act(state)
 
     assert action_1 == action_2, "HSP policy must be deterministic (argmax)"
 
 
-def test_engine_accepts_both_checkpoints() -> None:
-    engine_t = OvercookedEngine(layout_name="ttt", ai_checkpoint_id="tomato")
-    engine_o = OvercookedEngine(layout_name="ooo", ai_checkpoint_id="onion")
-    engine_t.reset()
-    engine_o.reset()
+def test_requested_checkpoint_paths_are_exact() -> None:
+    expected_actor_paths = {
+        "tto_sp_seed4": (
+            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4/"
+            "models/actor_periodic_10000000.pt"
+        ),
+        "tto_sp_seed5": (
+            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5/"
+            "models/actor_periodic_10000000.pt"
+        ),
+        "ttt_adaptive_seed1": (
+            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed1/"
+            "models/hsp_adaptive/actor_periodic_50000000.pt"
+        ),
+        "ttt_adaptive_seed2": (
+            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed2/"
+            "models/hsp_adaptive/actor_periodic_50000000.pt"
+        ),
+    }
 
-    result_t = engine_t.step(("STAY", None))
-    result_o = engine_o.step(("STAY", None))
-
-    assert result_t.step_index == 1
-    assert result_o.step_index == 1
+    for checkpoint_id, expected_suffix in expected_actor_paths.items():
+        paths = _resolve_checkpoint_paths(checkpoint_id)
+        assert str(paths.actor_path).endswith(expected_suffix)
 
 
 def test_engine_requires_policy_for_implicit_ai_action() -> None:
@@ -68,18 +92,18 @@ def test_engine_requires_policy_for_implicit_ai_action() -> None:
         engine.step("STAY")
 
 
-def test_hsp_act_latency(tomato_policy: HSPPolicy) -> None:
-    engine = OvercookedEngine(layout_name="ttt", ai_checkpoint_id=None)
+def test_hsp_act_latency(primary_policy: HSPPolicy) -> None:
+    engine = OvercookedEngine(layout_name="tto", ai_checkpoint_id=None)
     engine.reset()
     state = engine.current_state
     assert state is not None
 
     # Exclude one warmup call from the latency sample.
-    tomato_policy.act(state)
+    primary_policy.act(state)
     times = []
     for _ in range(50):
         start = time.perf_counter()
-        tomato_policy.act(state)
+        primary_policy.act(state)
         times.append((time.perf_counter() - start) * 1000)
 
     assert max(times) < 5.0, f"act() exceeded 5ms budget: max={max(times):.1f}ms"

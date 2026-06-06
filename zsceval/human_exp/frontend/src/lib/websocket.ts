@@ -8,6 +8,7 @@ export type PlayerSnapshot = {
   position: [number, number]
   orientation: [number, number]
   held_object: string | null
+  held_object_ingredients: string[]
 }
 
 export type ObjectSnapshot = {
@@ -86,6 +87,7 @@ export type TrialStartMessage = {
   type: 'trial_start'
   payload: {
     trial_id: number
+    total_trials: number
     phase: 'instruction'
     duration_ms: number
     player_hat: string
@@ -112,6 +114,41 @@ export type SessionCompleteMessage = {
   payload: { session_id: string }
 }
 
+export type PhaseThreeReplayTrial = {
+  trial_id: number
+  frames: GameState[]
+}
+
+export type PhaseThreeStartPayload = {
+  session_id: string
+  frame_duration_ms: number
+  player_hat: string
+  ai_hat: string
+  trials: PhaseThreeReplayTrial[]
+}
+
+export type PhaseThreeStartMessage = {
+  type: 'phase3_start'
+  payload: PhaseThreeStartPayload
+}
+
+export type PhaseThreeSegmentSelection = {
+  segment_id: string
+  start_frame: number
+  end_frame: number
+  created_at_ms: number
+}
+
+export type PhaseThreeTrialSelection = {
+  trial_id: number
+  segments: PhaseThreeSegmentSelection[]
+}
+
+export type PhaseThreeCompleteMessage = {
+  type: 'phase3_complete'
+  payload: { session_id: string; saved: boolean }
+}
+
 export type ServerMessage =
   | HelloAckMessage
   | GameStartMessage
@@ -121,6 +158,8 @@ export type ServerMessage =
   | PhaseChangeMessage
   | RatingAckMessage
   | SessionCompleteMessage
+  | PhaseThreeStartMessage
+  | PhaseThreeCompleteMessage
 
 // ---------------------------------------------------------------------------
 // Client
@@ -135,6 +174,8 @@ export type GameMessageHandlers = {
   onPhaseChange?: (msg: PhaseChangeMessage) => void
   onRatingAck?: (msg: RatingAckMessage) => void
   onSessionComplete?: (msg: SessionCompleteMessage) => void
+  onPhaseThreeStart?: (msg: PhaseThreeStartMessage) => void
+  onPhaseThreeComplete?: (msg: PhaseThreeCompleteMessage) => void
 }
 
 export type WebSocketClient = {
@@ -144,6 +185,7 @@ export type WebSocketClient = {
   startSession: (sessionId: string) => void
   sendPhaseReady: () => void
   submitRating: (rating: RatingPayload) => void
+  submitPhaseThree: (trials: PhaseThreeTrialSelection[]) => void
   sendPlayerAction: (action: string) => void
   endGame: () => void
   setHandlers: (handlers: GameMessageHandlers) => void
@@ -188,6 +230,12 @@ export function createWebSocketClient(url: string): WebSocketClient {
       case 'session_complete':
         handlers.onSessionComplete?.(msg)
         break
+      case 'phase3_start':
+        handlers.onPhaseThreeStart?.(msg)
+        break
+      case 'phase3_complete':
+        handlers.onPhaseThreeComplete?.(msg)
+        break
     }
   }
 
@@ -202,6 +250,8 @@ export function createWebSocketClient(url: string): WebSocketClient {
       socket.send(JSON.stringify({ type: 'phase_ready', payload: {} })),
     submitRating: (rating) =>
       socket.send(JSON.stringify({ type: 'submit_rating', payload: rating })),
+    submitPhaseThree: (trials) =>
+      socket.send(JSON.stringify({ type: 'submit_phase3', payload: { trials } })),
     sendPlayerAction: (action) =>
       socket.send(JSON.stringify({ type: 'player_action', payload: { action } })),
     endGame: () => socket.send(JSON.stringify({ type: 'end_game', payload: {} })),

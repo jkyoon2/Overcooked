@@ -31,14 +31,15 @@ _PICKUP_EVENT_KEYS = ("onion_pickup", "tomato_pickup", "dish_pickup", "soup_pick
 # Maps per-soup reward → recipe type string.
 _REWARD_TO_RECIPE: Dict[int, str] = {5: "ttt", 10: "tto", 15: "too", 20: "ooo"}
 
-# Per-layout recipe configuration: (ingredients, per-soup value, cook_time_ticks).
-# Used by _apply_recipe_config() instead of the unreliable per-ingredient formula.
-_LAYOUT_RECIPE_CONFIG: Dict[str, Any] = {
-    "ttt": (["tomato", "tomato", "tomato"], 5, 20),
-    "ooo": (["onion", "onion", "onion"], 20, 20),
-    "tto": (["tomato", "tomato", "onion"], 10, 20),
-    "too": (["tomato", "onion", "onion"], 15, 20),
-}
+# The checkpoint layouts share one kitchen geometry. Their layout files contain
+# different training orders, but the experiment must allow every recipe in every
+# trial so only the AI policy changes between conditions.
+_EXPERIMENT_RECIPES = (
+    (["tomato", "tomato", "tomato"], 5),
+    (["tomato", "tomato", "onion"], 10),
+    (["tomato", "onion", "onion"], 15),
+    (["onion", "onion", "onion"], 20),
+)
 
 
 @dataclass
@@ -96,31 +97,21 @@ class OvercookedEngine:
             random.seed(seed)
 
     def _apply_recipe_config(self) -> None:
-        # B-cat-A: Recipe.configure() sets class-level state. Re-apply on every
-        # reset/init so cross-trial leakage cannot happen when Task 4 adds trials.
-        #
-        # Use recipe_values keyed by layout name for robustness — the per-ingredient
-        # formula (tomato_value * n) is unreliable because from_layout_name() may
-        # override it again when called for the AI policy's internal MDP.
-        if self.layout_name in _LAYOUT_RECIPE_CONFIG:
-            ingredients, value, cook_time = _LAYOUT_RECIPE_CONFIG[self.layout_name]
-            Recipe.configure(
-                {
-                    "all_orders": [{"ingredients": ingredients}],
-                    "recipe_values": [value],
-                    "recipe_times": [cook_time],
-                }
-            )
-        else:
-            # Generic fallback for debug layouts (corner_onion_tomato, cramped_room, etc.)
-            Recipe.configure(
-                {
-                    "tomato_value": self.tomato_reward / 3,
-                    "onion_value": self.onion_reward / 3,
-                    "tomato_time": 20,
-                    "onion_time": 20,
-                }
-            )
+        # Recipe.configure() is global, while start_all_orders is stored on each
+        # MDP instance. Keep both in sync on every reset to prevent checkpoint
+        # layout metadata from leaking into experiment scoring.
+        all_orders = [
+            {"ingredients": list(ingredients)}
+            for ingredients, _ in _EXPERIMENT_RECIPES
+        ]
+        recipe_config = {
+            "all_orders": all_orders,
+            "recipe_values": [value for _, value in _EXPERIMENT_RECIPES],
+            "recipe_times": [20] * len(_EXPERIMENT_RECIPES),
+        }
+        Recipe.configure(recipe_config)
+        self.mdp.recipe_config = recipe_config
+        self.mdp.start_all_orders = all_orders
 
     def reset(self) -> GameState:
         """Start a fresh episode. Returns the initial serialized state."""
@@ -206,13 +197,19 @@ class OvercookedEngine:
         players = []
         for p in state.players:
             held: Optional[str] = None
+            held_object_ingredients: List[str] = []
             if p.held_object is not None:
-                held = "soup" if hasattr(p.held_object, "ingredients") else p.held_object.name
+                if hasattr(p.held_object, "ingredients"):
+                    held = "soup"
+                    held_object_ingredients = list(p.held_object.ingredients)
+                else:
+                    held = p.held_object.name
             players.append(
                 PlayerSnapshot(
                     position=list(p.position),
                     orientation=list(p.orientation),
                     held_object=held,
+                    held_object_ingredients=held_object_ingredients,
                 )
             )
 

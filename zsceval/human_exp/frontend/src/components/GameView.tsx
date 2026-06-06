@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { GameState, ObjectSnapshot } from '../lib/websocket'
+import type { GameState, ObjectSnapshot, PlayerSnapshot } from '../lib/websocket'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -140,10 +140,15 @@ function normalizeHat(hat: string): string {
   return 'bluehat'
 }
 
-function heldSuffix(held: string | null, layoutName: string): string {
-  if (!held) return ''
-  if (held === 'soup') return layoutName === 'ttt' ? '-soup-tomato' : '-soup-onion'
-  return `-${held}`  // '-onion', '-tomato', '-dish'
+function heldSuffix(player: PlayerSnapshot): string {
+  if (!player.held_object) return ''
+  if (player.held_object === 'soup') {
+    const ingredients = player.held_object_ingredients ?? []
+    const tomatoCount = ingredients.filter((item) => item === 'tomato').length
+    const onionCount = ingredients.filter((item) => item === 'onion').length
+    return tomatoCount >= onionCount ? '-soup-tomato' : '-soup-onion'
+  }
+  return `-${player.held_object}`  // '-onion', '-tomato', '-dish'
 }
 
 function soupFrameKey(soup: ObjectSnapshot): string | null {
@@ -208,7 +213,7 @@ function drawGrid(
     const p = state.players[i]
     const [col, row] = p.position
     const dir = orientationToDir(p.orientation as [number, number])
-    const bodyKey = `${dir}${heldSuffix(p.held_object, state.layout_name)}`
+    const bodyKey = `${dir}${heldSuffix(p)}`
     const hatKey  = `${dir}-${hatColors[i]}`
 
     const bodyF = CHEFS[bodyKey] ?? CHEFS[dir]

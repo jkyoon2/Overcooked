@@ -20,6 +20,7 @@ const RECIPE_ICONS: Record<string, string> = {
 }
 
 type PlayScreenProps = {
+  trialId: number
   gameState: GameState | null
   score: number
   timeRemainingMs: number
@@ -32,6 +33,7 @@ type PlayScreenProps = {
 }
 
 export default function PlayScreen({
+  trialId,
   gameState,
   score,
   timeRemainingMs,
@@ -50,26 +52,27 @@ export default function PlayScreen({
   const onPhaseReadyRef = useRef(onPhaseReady)
   useLayoutEffect(() => { onPhaseReadyRef.current = onPhaseReady })
 
-  // Reset guard on each new mount (new trial)
+  const playFinished = gameEnded || timeRemainingMs <= 0
+
+  // Reset guard for each trial.
   useEffect(() => {
     phaseReadySentRef.current = false
     setOverlayVisible(false)
-  }, [])
+  }, [trialId])
 
   // Show "Time's up!" overlay for 2s then advance.
-  // Depends only on gameEnded / timeRemainingMs so function-ref churn
-  // (onPhaseReady recreated on every App render) never cancels the timer.
+  // Depend on the combined edge so a trailing game_end message cannot cancel
+  // the timer started by the final game_step.
   useEffect(() => {
-    if ((gameEnded || timeRemainingMs <= 0) && !phaseReadySentRef.current) {
-      phaseReadySentRef.current = true
-      setOverlayVisible(true)
-      const timer = window.setTimeout(() => {
-        setOverlayVisible(false)
-        onPhaseReadyRef.current()
-      }, 2000)
-      return () => window.clearTimeout(timer)
-    }
-  }, [gameEnded, timeRemainingMs])
+    if (!playFinished || phaseReadySentRef.current) return
+
+    phaseReadySentRef.current = true
+    setOverlayVisible(true)
+    const timer = window.setTimeout(() => {
+      onPhaseReadyRef.current()
+    }, 2000)
+    return () => window.clearTimeout(timer)
+  }, [playFinished, trialId])
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {

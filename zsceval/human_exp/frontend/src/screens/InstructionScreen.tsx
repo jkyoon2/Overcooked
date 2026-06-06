@@ -69,6 +69,17 @@ export default function InstructionScreen({
           textAlign: 'center',
         }}
       >
+        <span
+          style={{
+            color: '#2563eb',
+            fontSize: '0.95rem',
+            fontWeight: 800,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+          }}
+        >
+          Phase 2, Trial {trialId}
+        </span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
           <h1
             style={{

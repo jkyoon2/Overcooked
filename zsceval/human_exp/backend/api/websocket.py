@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -16,15 +16,21 @@ from backend.data.schema import (
     PhaseChangeMessage,
     PhaseChangePayload,
     PhaseReadyMessage,
+    PhaseThreeCompleteMessage,
+    PhaseThreeCompletePayload,
+    PhaseThreeReplayTrial,
+    PhaseThreeStartMessage,
+    PhaseThreeStartPayload,
     RatingAckMessage,
     RatingAckPayload,
-    SessionCompleteMessage,
-    SessionCompletePayload,
     StartSessionMessage,
+    SubmitPhaseThreeMessage,
     SubmitRatingMessage,
     TrialStartMessage,
     TrialStartPayload,
 )
+from backend.data.phase3_store import save_phase_three_record
+from backend.game.ai_loader import checkpoint_layout
 from backend.game.engine import ACTION_MAP, OvercookedEngine
 from backend.trial.condition import TrialCondition
 from backend.trial.manager import TrialPhase
@@ -37,15 +43,6 @@ RATING_DURATION_MS = 20_000
 BREAK_DURATION_MS = 5_000
 PLAYER_HAT = "blue"
 AI_HAT = "red"
-_LAYOUT_BY_CHECKPOINT = {
-    "tomato": "ttt",
-    "onion": "ooo",
-    "ttt": "ttt",
-    "tto": "tto",
-    "too": "too",
-    "ooo": "ooo",
-}
-
 # ---------------------------------------------------------------------------
 # Per-connection state
 # ---------------------------------------------------------------------------
@@ -58,6 +55,9 @@ class ConnectionState:
     latest_player_action: Any = None  # overwrite slot; None → STAY
     tick_task: Optional[asyncio.Task] = None  # type: ignore[type-arg]
     tick_timestamps: List[float] = field(default_factory=list)
+    trial_trajectories: Dict[int, List[Dict[str, Any]]] = field(
+        default_factory=dict
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -93,16 +93,20 @@ async def _tick_loop(websocket: WebSocket, conn: ConnectionState) -> None:
         result = conn.engine.step(player_action)
 
         # Serialize state
+        state_payload = result.next_state.model_dump()
         msg = {
             "type": "game_step",
             "payload": {
                 "step_index": result.step_index,
-                "state": result.next_state.model_dump(),
+                "state": state_payload,
                 "events": [e.model_dump() for e in result.events],
                 "rewards": list(result.rewards),
                 "server_timestamp_ms": int(time.time() * 1000),
             },
         }
+        if conn.session is not None:
+            trial_id = conn.session.current_trial_id()
+            conn.trial_trajectories.setdefault(trial_id, []).append(state_payload)
 
         # Track tick rate for AC5 measurement
         conn.tick_timestamps.append(tick_start)
@@ -175,18 +179,15 @@ async def websocket_handler(websocket: WebSocket) -> None:
             # --- Task 2 game protocol ---
             elif msg_type == "start_game":
                 payload = data.get("payload", {})
-                ai_checkpoint_id = payload.get("ai_checkpoint", "tomato")
-                if ai_checkpoint_id not in _LAYOUT_BY_CHECKPOINT:
-                    expected = ", ".join(sorted(_LAYOUT_BY_CHECKPOINT))
-                    raise ValueError(
-                        f"Unknown AI checkpoint id {ai_checkpoint_id!r}; "
-                        f"expected one of {expected}"
-                    )
+                ai_checkpoint_id = payload.get(
+                    "ai_checkpoint",
+                    "tto_sp_seed4",
+                )
                 layout_name = (
                     payload.get("layout")
                     if "ai_checkpoint" in payload
                     else None
-                ) or _LAYOUT_BY_CHECKPOINT[ai_checkpoint_id]
+                ) or checkpoint_layout(ai_checkpoint_id)
 
                 await _cancel_tick_task(conn)
 
@@ -223,6 +224,7 @@ async def websocket_handler(websocket: WebSocket) -> None:
                 await _cancel_tick_task(conn)
                 conn.engine = None
                 conn.session = SessionManager(parsed.payload.session_id)
+                conn.trial_trajectories = {}
                 conn.session.trial_manager.start_instruction(
                     trial_id=conn.session.current_trial_id(),
                     condition=conn.session.current_condition(),
@@ -265,6 +267,26 @@ async def websocket_handler(websocket: WebSocket) -> None:
                     _phase_change_message(TrialPhase.BREAK).model_dump()
                 )
 
+            elif msg_type == "submit_phase3":
+                parsed = SubmitPhaseThreeMessage.model_validate(data)
+                if conn.session is None or not conn.session.is_complete():
+                    continue
+                _validate_phase_three_selections(conn, parsed)
+                replay_trials = _replay_trial_records(conn)
+                save_phase_three_record(
+                    session_id=conn.session.session_id,
+                    replay_trials=replay_trials,
+                    selections=parsed.payload.trials,
+                )
+                complete = PhaseThreeCompleteMessage(
+                    type="phase3_complete",
+                    payload=PhaseThreeCompletePayload(
+                        session_id=conn.session.session_id,
+                        saved=True,
+                    ),
+                )
+                await websocket.send_json(complete.model_dump())
+
     except WebSocketDisconnect:
         await _cancel_tick_task(conn)
     except asyncio.CancelledError:
@@ -287,11 +309,13 @@ async def _start_play_phase(websocket: WebSocket, conn: ConnectionState) -> None
     condition = conn.session.current_condition()
     conn.engine = OvercookedEngine(
         layout_name=_layout_for_condition(condition),
-        ai_checkpoint_id=condition.ai_checkpoint,
+        ai_checkpoint_id=condition.model_checkpoint,
     )
     initial_state = conn.engine.reset()
+    initial_payload = initial_state.model_dump()
     conn.session.trial_manager.start_play()
     conn.tick_timestamps = []
+    conn.trial_trajectories[conn.session.current_trial_id()] = [initial_payload]
 
     # Send phase_change — await required: WebSocket.send_json() is async
     await websocket.send_json(_phase_change_message(TrialPhase.PLAY).model_dump())
@@ -299,7 +323,7 @@ async def _start_play_phase(websocket: WebSocket, conn: ConnectionState) -> None
         "type": "game_start",
         "payload": {
             "layout": conn.engine.layout_name,
-            "initial_state": initial_state.model_dump(),
+            "initial_state": initial_payload,
         },
     }
     # Send game_start — await required: WebSocket.send_json() is async
@@ -327,12 +351,60 @@ async def _complete_break_or_session(websocket: WebSocket, conn: ConnectionState
         await websocket.send_json(_trial_start_message(conn.session).model_dump())
         return
 
-    complete = SessionCompleteMessage(
-        type="session_complete",
-        payload=SessionCompletePayload(session_id=conn.session.session_id),
+    phase_three = PhaseThreeStartMessage(
+        type="phase3_start",
+        payload=PhaseThreeStartPayload(
+            session_id=conn.session.session_id,
+            frame_duration_ms=100,
+            player_hat=PLAYER_HAT,
+            ai_hat=AI_HAT,
+            trials=[
+                PhaseThreeReplayTrial(
+                    trial_id=trial["trial_id"],
+                    frames=trial["frames"],
+                )
+                for trial in _replay_trial_records(conn)
+            ],
+        ),
     )
-    # Send session_complete — await required: WebSocket.send_json() is async
-    await websocket.send_json(complete.model_dump())
+    await websocket.send_json(phase_three.model_dump())
+
+
+def _replay_trial_records(conn: ConnectionState) -> List[Dict[str, Any]]:
+    assert conn.session is not None
+    return [
+        {
+            "trial_id": trial_id,
+            "frames": conn.trial_trajectories.get(trial_id, []),
+        }
+        for trial_id in range(1, conn.session.total_trials + 1)
+    ]
+
+
+def _validate_phase_three_selections(
+    conn: ConnectionState,
+    message: SubmitPhaseThreeMessage,
+) -> None:
+    assert conn.session is not None
+    expected_trial_ids = set(range(1, conn.session.total_trials + 1))
+    submitted_trial_ids = {trial.trial_id for trial in message.payload.trials}
+    if (
+        len(message.payload.trials) != conn.session.total_trials
+        or submitted_trial_ids != expected_trial_ids
+    ):
+        raise ValueError(
+            "Phase 3 selections must include every Phase 2 trial exactly once"
+        )
+
+    for trial in message.payload.trials:
+        frame_count = len(conn.trial_trajectories.get(trial.trial_id, []))
+        if frame_count == 0:
+            raise ValueError(f"Trial {trial.trial_id} has no replay frames")
+        for segment in trial.segments:
+            if segment.end_frame >= frame_count:
+                raise ValueError(
+                    f"Trial {trial.trial_id} segment exceeds replay frame count"
+                )
 
 
 def _trial_start_message(session: SessionManager) -> TrialStartMessage:
@@ -340,6 +412,7 @@ def _trial_start_message(session: SessionManager) -> TrialStartMessage:
         type="trial_start",
         payload=TrialStartPayload(
             trial_id=session.current_trial_id(),
+            total_trials=session.total_trials,
             phase="instruction",
             duration_ms=INSTRUCTION_DURATION_MS,
             player_hat=PLAYER_HAT,
@@ -371,4 +444,4 @@ def _duration_for_phase(phase: TrialPhase) -> int:
 
 
 def _layout_for_condition(condition: TrialCondition) -> str:
-    return _LAYOUT_BY_CHECKPOINT[condition.ai_checkpoint]
+    return checkpoint_layout(condition.model_checkpoint)

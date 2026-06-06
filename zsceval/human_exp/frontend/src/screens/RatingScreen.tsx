@@ -13,7 +13,11 @@ const DEFAULT_RATING: RatingPayload = {
   intent_alignment: 'yes_somewhat',
 }
 
-export default function RatingScreen({ trialId, durationMs, onSubmit }: RatingScreenProps) {
+export default function RatingScreen({
+  trialId,
+  durationMs,
+  onSubmit,
+}: RatingScreenProps) {
   const [quality, setQuality] = useState<number | null>(null)
   const [intentAlignment, setIntentAlignment] = useState<IntentAlignment | null>(null)
   const [remainingMs, setRemainingMs] = useState(durationMs)
@@ -101,6 +105,18 @@ export default function RatingScreen({ trialId, durationMs, onSubmit }: RatingSc
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
           <div>
+            <p
+              style={{
+                margin: '0 0 0.55rem',
+                color: '#2563eb',
+                fontSize: '0.9rem',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Phase 2, Trial {trialId}
+            </p>
             <h1 style={{ margin: 0, fontSize: '2.3rem', lineHeight: 1.05, letterSpacing: 0 }}>
               Trial {trialId} Rating
             </h1>

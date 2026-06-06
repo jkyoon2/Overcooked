@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Tests for OvercookedEngine (Task 2).
 
 PI-6: actions are tuple/string values (not integers).
@@ -7,12 +5,21 @@ PI-5: Recipe.configure() sets onion_value=20, tomato_value=5.
 PI-2: get_state_transition() returns (new_state, infos) with sparse_reward_by_agent.
 """
 
-from unittest.mock import MagicMock, patch
+from __future__ import annotations
+
+from unittest.mock import patch
 
 import pytest
 
-from backend.game.engine import ACTION_MAP, OvercookedEngine, StepResult
 from backend.data.schema import GameState
+from backend.game.engine import ACTION_MAP, OvercookedEngine, StepResult
+from zsceval.envs.overcooked_new.src.overcooked_ai_py.mdp.actions import Direction
+from zsceval.envs.overcooked_new.src.overcooked_ai_py.mdp.overcooked_mdp import (
+    ObjectState,
+    PlayerState,
+    Recipe,
+    SoupState,
+)
 
 
 LAYOUT = "corner_onion_tomato"
@@ -122,6 +129,86 @@ def test_onion_delivery_yields_20(engine: OvercookedEngine) -> None:
     assert len(deliver_events) == 1
     assert deliver_events[0].payload["recipe"] == "ooo"
     assert deliver_events[0].payload["reward"] == 20.0
+
+
+@pytest.mark.parametrize(
+    ("ingredients", "expected_reward"),
+    [
+        (["tomato", "tomato", "tomato"], 5),
+        (["tomato", "tomato", "onion"], 10),
+        (["tomato", "onion", "onion"], 15),
+        (["onion", "onion", "onion"], 20),
+    ],
+)
+def test_onion_checkpoint_layout_accepts_every_experiment_recipe(
+    ingredients: list[str],
+    expected_reward: int,
+) -> None:
+    engine = OvercookedEngine(layout_name="ooo")
+    engine.reset()
+    state = engine.current_state
+    assert state is not None
+
+    assert engine.mdp.get_recipe_value(state, Recipe(ingredients)) == expected_reward
+
+
+def test_tomato_delivery_in_onion_checkpoint_layout_yields_five_points() -> None:
+    engine = OvercookedEngine(layout_name="ooo")
+    engine.reset()
+    state = engine.current_state
+    assert state is not None
+
+    serving_position = (1, 3)
+    tomato_soup = SoupState(
+        serving_position,
+        ingredients=[
+            ObjectState("tomato", serving_position)
+            for _ in range(3)
+        ],
+        cooking_tick=20,
+        cook_time=20,
+    )
+    human = PlayerState(serving_position, Direction.WEST, tomato_soup)
+    state.players = (human, state.players[1])
+
+    result = engine.step((ACTION_MAP["INTERACT"], ACTION_MAP["STAY"]))
+
+    assert result.rewards == (5.0, 0.0)
+    assert result.next_state.score == 5.0
+    assert [
+        event.payload["recipe"]
+        for event in result.events
+        if event.event_type == "player_deliver"
+    ] == ["ttt"]
+
+
+def test_serialized_player_state_preserves_held_soup_ingredients() -> None:
+    engine = OvercookedEngine(layout_name="ooo")
+    engine.reset()
+    state = engine.current_state
+    assert state is not None
+
+    player_position = state.players[0].position
+    tomato_soup = SoupState(
+        player_position,
+        ingredients=[
+            ObjectState("tomato", player_position)
+            for _ in range(3)
+        ],
+        cooking_tick=20,
+        cook_time=20,
+    )
+    state.players[0].set_object(tomato_soup)
+
+    snapshot = engine.current_game_state
+
+    assert snapshot is not None
+    assert snapshot.players[0].held_object == "soup"
+    assert snapshot.players[0].held_object_ingredients == [
+        "tomato",
+        "tomato",
+        "tomato",
+    ]
 
 
 def test_step_is_synchronous(engine: OvercookedEngine) -> None:

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import {
   createWebSocketClient,
   type GameState,
+  type PhaseThreeStartPayload,
+  type PhaseThreeTrialSelection,
   type RatingPayload,
   type TrialPhase,
   type TrialStartMessage,
@@ -10,11 +12,13 @@ import {
 import InstructionScreen from './screens/InstructionScreen'
 import PlayScreen from './screens/PlayScreen'
 import RatingScreen from './screens/RatingScreen'
+import BreakScreen from './screens/BreakScreen'
+import PhaseThreeScreen from './screens/PhaseThreeScreen'
 
 const DEFAULT_SESSION_ID = 'TEST_S01'
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected'
-type AppPhase = 'idle' | 'waiting' | TrialPhase | 'complete'
+type AppPhase = 'idle' | 'waiting' | TrialPhase | 'phase3' | 'complete'
 type InstructionPayload = TrialStartMessage['payload']
 
 export default function App() {
@@ -28,6 +32,8 @@ export default function App() {
   const [breakDurationMs, setBreakDurationMs] = useState(5_000)
   const [gameState, setGameState] = useState<GameState | null>(null)
   const [gameEnded, setGameEnded] = useState(false)
+  const [phaseThreeData, setPhaseThreeData] = useState<PhaseThreeStartPayload | null>(null)
+  const [phaseThreeSubmitting, setPhaseThreeSubmitting] = useState(false)
   const [deliveries, setDeliveries] = useState({ ttt: 0, tto: 0, too: 0, ooo: 0 })
   const clientRef = useRef<WebSocketClient | null>(null)
   const connectPollRef = useRef<number | null>(null)
@@ -84,6 +90,16 @@ export default function App() {
       },
       onSessionComplete: () => {
         setInstruction(null)
+        setPhase('complete')
+      },
+      onPhaseThreeStart: (msg) => {
+        setInstruction(null)
+        setPhaseThreeData(msg.payload)
+        setPhaseThreeSubmitting(false)
+        setPhase('phase3')
+      },
+      onPhaseThreeComplete: () => {
+        setPhaseThreeSubmitting(false)
         setPhase('complete')
       },
       onRatingAck: () => {
@@ -157,6 +173,7 @@ export default function App() {
   // Stable callbacks so PlayScreen effects don't re-fire on every App re-render
   const handlePhaseReady = useCallback(() => {
     clientRef.current?.sendPhaseReady()
+    setPhase('waiting')
   }, [])
 
   const handlePlayerAction = useCallback((action: string) => {
@@ -165,6 +182,12 @@ export default function App() {
 
   const handleRatingSubmit = useCallback((rating: RatingPayload) => {
     clientRef.current?.submitRating(rating)
+  }, [])
+
+  const handlePhaseThreeSubmit = useCallback((trials: PhaseThreeTrialSelection[]) => {
+    if (!clientRef.current?.isOpen()) return
+    setPhaseThreeSubmitting(true)
+    clientRef.current.submitPhaseThree(trials)
   }, [])
 
   useEffect(() => {
@@ -253,6 +276,16 @@ export default function App() {
     )
   }
 
+  if (phase === 'phase3' && phaseThreeData !== null) {
+    return (
+      <PhaseThreeScreen
+        data={phaseThreeData}
+        submitting={phaseThreeSubmitting}
+        onSubmit={handlePhaseThreeSubmit}
+      />
+    )
+  }
+
   return (
     <div style={{ minHeight: '100vh', fontFamily: 'system-ui, sans-serif', background: '#f8fafc' }}>
       <header
@@ -268,8 +301,13 @@ export default function App() {
       >
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', minWidth: 0 }}>
           <strong>Neurocontroller</strong>
-          <span style={{ color: '#15803d' }}>connected</span>
-          <span style={{ color: '#64748b' }}>phase: {phase}</span>
+          <span style={{ color: '#2563eb', fontWeight: 700 }}>
+            {phase === 'complete'
+              ? 'Experiment complete'
+              : currentTrialId === null
+                ? 'Phase 2'
+                : `Phase 2, Trial ${currentTrialId}`}
+          </span>
         </div>
       </header>
 
@@ -284,6 +322,7 @@ export default function App() {
         {phase === 'waiting' && <p>Waiting for the next phase...</p>}
         {phase === 'play' && (
           <PlayScreen
+            trialId={currentTrialId ?? 1}
             gameState={gameState}
             score={gameState?.score ?? 0}
             timeRemainingMs={gameState !== null ? gameState.time_remaining * 100 : Infinity}
@@ -296,8 +335,39 @@ export default function App() {
           />
         )}
         {phase === 'rating' && <p>Preparing rating screen...</p>}
-        {phase === 'break' && <p>Break phase ready.</p>}
-        {phase === 'complete' && <p>Session complete.</p>}
+        {phase === 'break' && currentTrialId !== null && (
+          <BreakScreen
+            completedTrial={currentTrialId}
+            durationMs={breakDurationMs}
+          />
+        )}
+        {phase === 'complete' && (
+          <section
+            style={{
+              width: 'min(42rem, 100%)',
+              padding: '2.5rem',
+              border: '1px solid #bbf7d0',
+              borderRadius: '16px',
+              background: '#f0fdf4',
+            }}
+          >
+            <p
+              style={{
+                margin: '0 0 0.75rem',
+                color: '#15803d',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Phase 3 complete
+            </p>
+            <h1 style={{ margin: 0 }}>Replay annotations are saved.</h1>
+            <p style={{ margin: '0.75rem 0 0', color: '#475569' }}>
+              Thank you. The experiment is complete.
+            </p>
+          </section>
+        )}
       </main>
     </div>
   )

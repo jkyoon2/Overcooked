@@ -18,7 +18,18 @@ from zsceval.envs.overcooked_new.src.overcooked_ai_py.mdp.overcooked_mdp import 
 )
 
 
-CheckpointId = Literal["tomato", "onion", "ttt", "tto", "too", "ooo"]
+CheckpointId = Literal[
+    "tomato",
+    "onion",
+    "ttt",
+    "tto",
+    "too",
+    "ooo",
+    "tto_sp_seed4",
+    "tto_sp_seed5",
+    "ttt_adaptive_seed1",
+    "ttt_adaptive_seed2",
+]
 _LAYOUT_BY_CHECKPOINT_ID: Dict[str, str] = {
     "tomato": "ttt",
     "onion": "ooo",
@@ -26,9 +37,113 @@ _LAYOUT_BY_CHECKPOINT_ID: Dict[str, str] = {
     "tto": "tto",
     "too": "too",
     "ooo": "ooo",
+    "tto_sp_seed4": "tto",
+    "tto_sp_seed5": "tto",
+    "ttt_adaptive_seed1": "ttt",
+    "ttt_adaptive_seed2": "ttt",
 }
 _DEFAULT_RELATIVE_RUN = Path("shared") / "rmappo" / "hsp-S1" / "seed1"
 _PERIODIC_MODEL_RE = re.compile(r"^(actor|critic)_periodic_(\d+)\.pt$")
+_ADAPTIVE_CONFIG_OVERRIDES = (
+    "use_agent_policy_id",
+    "num_v_out",
+    "use_task_v_out",
+    "use_policy_vhead",
+    "use_proper_time_limits",
+    "entropy_coefs",
+    "entropy_coef_horizons",
+    "use_peb",
+    "data_parallel",
+)
+
+
+@dataclass(frozen=True)
+class _ExplicitCheckpointSpec:
+    layout_name: str
+    run_dir: Path
+    config_path: Path
+    actor_path: Path
+    critic_path: Optional[Path]
+    step: int
+    runtime_config_path: Optional[Path] = None
+
+
+_EXPLICIT_CHECKPOINT_SPECS = {
+    "tto_sp_seed4": _ExplicitCheckpointSpec(
+        layout_name="tto",
+        run_dir=Path("results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4"),
+        config_path=Path(
+            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4/"
+            "policy_config.pkl"
+        ),
+        actor_path=Path(
+            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4/"
+            "models/actor_periodic_10000000.pt"
+        ),
+        critic_path=Path(
+            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4/"
+            "models/critic_periodic_10000000.pt"
+        ),
+        step=10_000_000,
+    ),
+    "tto_sp_seed5": _ExplicitCheckpointSpec(
+        layout_name="tto",
+        run_dir=Path("results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5"),
+        config_path=Path(
+            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5/"
+            "policy_config.pkl"
+        ),
+        actor_path=Path(
+            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5/"
+            "models/actor_periodic_10000000.pt"
+        ),
+        critic_path=Path(
+            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5/"
+            "models/critic_periodic_10000000.pt"
+        ),
+        step=10_000_000,
+    ),
+    "ttt_adaptive_seed1": _ExplicitCheckpointSpec(
+        layout_name="ttt",
+        run_dir=Path(
+            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed1"
+        ),
+        config_path=Path(
+            "zsceval/scripts/policy_pool/ttt/policy_config/"
+            "rnn_policy_config.pkl"
+        ),
+        actor_path=Path(
+            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed1/"
+            "models/hsp_adaptive/actor_periodic_50000000.pt"
+        ),
+        critic_path=None,
+        step=50_000_000,
+        runtime_config_path=Path(
+            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed1/"
+            "policy_config.pkl"
+        ),
+    ),
+    "ttt_adaptive_seed2": _ExplicitCheckpointSpec(
+        layout_name="ttt",
+        run_dir=Path(
+            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed2"
+        ),
+        config_path=Path(
+            "zsceval/scripts/policy_pool/ttt/policy_config/"
+            "rnn_policy_config.pkl"
+        ),
+        actor_path=Path(
+            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed2/"
+            "models/hsp_adaptive/actor_periodic_50000000.pt"
+        ),
+        critic_path=None,
+        step=50_000_000,
+        runtime_config_path=Path(
+            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed2/"
+            "policy_config.pkl"
+        ),
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -37,8 +152,9 @@ class _CheckpointPaths:
     run_dir: Path
     config_path: Path
     actor_path: Path
-    critic_path: Path
+    critic_path: Optional[Path]
     step: int
+    runtime_config_path: Optional[Path] = None
 
 
 class HSPPolicy:
@@ -57,8 +173,7 @@ class HSPPolicy:
         self.paths = _resolve_checkpoint_paths(checkpoint_id)
         self.layout_name = self.paths.layout_name
 
-        with self.paths.config_path.open("rb") as config_file:
-            policy_config = pickle.load(config_file)
+        policy_config = _load_policy_config(self.paths)
         if not isinstance(policy_config, tuple) or len(policy_config) != 4:
             raise ValueError(
                 f"Expected policy_config.pkl to contain "
@@ -94,9 +209,10 @@ class HSPPolicy:
         self._policy.actor.load_state_dict(
             torch.load(self.paths.actor_path, map_location=self.device)
         )
-        self._policy.critic.load_state_dict(
-            torch.load(self.paths.critic_path, map_location=self.device)
-        )
+        if self.paths.critic_path is not None:
+            self._policy.critic.load_state_dict(
+                torch.load(self.paths.critic_path, map_location=self.device)
+            )
         self._policy.prep_rollout()
 
     @torch.no_grad()
@@ -216,9 +332,40 @@ def load_policy(checkpoint_id: str, device: str = "cpu") -> HSPPolicy:
     return HSPPolicy(cast(CheckpointId, checkpoint_id), device=device)
 
 
+def checkpoint_layout(checkpoint_id: str) -> str:
+    if checkpoint_id not in _LAYOUT_BY_CHECKPOINT_ID:
+        expected = ", ".join(sorted(_LAYOUT_BY_CHECKPOINT_ID))
+        raise ValueError(
+            f"Unknown AI checkpoint id {checkpoint_id!r}; expected one of {expected}"
+        )
+    return _LAYOUT_BY_CHECKPOINT_ID[checkpoint_id]
+
+
 def _resolve_checkpoint_paths(checkpoint_id: str) -> _CheckpointPaths:
-    layout_name = _LAYOUT_BY_CHECKPOINT_ID[checkpoint_id]
     repo_root = Path(__file__).resolve().parents[4]
+    explicit_spec = _EXPLICIT_CHECKPOINT_SPECS.get(checkpoint_id)
+    if explicit_spec is not None:
+        paths = _CheckpointPaths(
+            layout_name=explicit_spec.layout_name,
+            run_dir=repo_root / explicit_spec.run_dir,
+            config_path=repo_root / explicit_spec.config_path,
+            actor_path=repo_root / explicit_spec.actor_path,
+            critic_path=(
+                repo_root / explicit_spec.critic_path
+                if explicit_spec.critic_path is not None
+                else None
+            ),
+            step=explicit_spec.step,
+            runtime_config_path=(
+                repo_root / explicit_spec.runtime_config_path
+                if explicit_spec.runtime_config_path is not None
+                else None
+            ),
+        )
+        _validate_checkpoint_files(paths)
+        return paths
+
+    layout_name = checkpoint_layout(checkpoint_id)
     run_dir = repo_root / "results" / "Overcooked" / layout_name / _DEFAULT_RELATIVE_RUN
     config_path = run_dir / "policy_config.pkl"
     models_dir = run_dir / "models"
@@ -234,6 +381,33 @@ def _resolve_checkpoint_paths(checkpoint_id: str) -> _CheckpointPaths:
         critic_path=critic_path,
         step=step,
     )
+
+
+def _load_policy_config(paths: _CheckpointPaths) -> Tuple[Any, Any, Any, Any]:
+    with paths.config_path.open("rb") as config_file:
+        policy_config = pickle.load(config_file)
+    if paths.runtime_config_path is None:
+        return cast(Tuple[Any, Any, Any, Any], policy_config)
+
+    base_args, _, _, _ = policy_config
+    with paths.runtime_config_path.open("rb") as runtime_config_file:
+        runtime_args, obs_space, share_obs_space, act_space = pickle.load(
+            runtime_config_file
+        )
+    for attribute in _ADAPTIVE_CONFIG_OVERRIDES:
+        setattr(base_args, attribute, getattr(runtime_args, attribute))
+    return base_args, obs_space, share_obs_space, act_space
+
+
+def _validate_checkpoint_files(paths: _CheckpointPaths) -> None:
+    for path in (
+        paths.config_path,
+        paths.actor_path,
+        paths.critic_path,
+        paths.runtime_config_path,
+    ):
+        if path is not None and not path.exists():
+            raise FileNotFoundError(f"Missing HSP checkpoint file: {path}")
 
 
 def _find_latest_model_pair(models_dir: Path) -> Tuple[Path, Path, int]:

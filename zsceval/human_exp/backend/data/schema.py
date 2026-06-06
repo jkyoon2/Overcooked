@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -38,6 +38,7 @@ class PlayerSnapshot(BaseModel):
     position: List[int]      # [x, y]
     orientation: List[int]   # [dx, dy]
     held_object: Optional[str]  # "onion", "tomato", "dish", "soup", or None
+    held_object_ingredients: List[str] = Field(default_factory=list)
 
 
 class ObjectSnapshot(BaseModel):
@@ -129,6 +130,7 @@ class SubmitRatingMessage(BaseModel):
 
 class TrialStartPayload(BaseModel):
     trial_id: int
+    total_trials: int
     phase: Literal["instruction"]
     duration_ms: int
     player_hat: str
@@ -168,3 +170,63 @@ class SessionCompletePayload(BaseModel):
 class SessionCompleteMessage(BaseModel):
     type: Literal["session_complete"]
     payload: SessionCompletePayload
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: trajectory replay and misalignment segment annotation
+# ---------------------------------------------------------------------------
+
+
+class PhaseThreeReplayTrial(BaseModel):
+    trial_id: int
+    frames: List[GameState]
+
+
+class PhaseThreeStartPayload(BaseModel):
+    session_id: str
+    frame_duration_ms: int
+    player_hat: str
+    ai_hat: str
+    trials: List[PhaseThreeReplayTrial]
+
+
+class PhaseThreeStartMessage(BaseModel):
+    type: Literal["phase3_start"]
+    payload: PhaseThreeStartPayload
+
+
+class PhaseThreeSegment(BaseModel):
+    segment_id: str
+    start_frame: int = Field(ge=0)
+    end_frame: int = Field(ge=0)
+    created_at_ms: int
+
+    @model_validator(mode="after")
+    def validate_frame_order(self) -> "PhaseThreeSegment":
+        if self.start_frame > self.end_frame:
+            raise ValueError("start_frame must be less than or equal to end_frame")
+        return self
+
+
+class PhaseThreeTrialSelection(BaseModel):
+    trial_id: int
+    segments: List[PhaseThreeSegment]
+
+
+class SubmitPhaseThreePayload(BaseModel):
+    trials: List[PhaseThreeTrialSelection]
+
+
+class SubmitPhaseThreeMessage(BaseModel):
+    type: Literal["submit_phase3"]
+    payload: SubmitPhaseThreePayload
+
+
+class PhaseThreeCompletePayload(BaseModel):
+    session_id: str
+    saved: bool
+
+
+class PhaseThreeCompleteMessage(BaseModel):
+    type: Literal["phase3_complete"]
+    payload: PhaseThreeCompletePayload
