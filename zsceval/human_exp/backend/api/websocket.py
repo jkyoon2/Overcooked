@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from fastapi import WebSocket, WebSocketDisconnect
-
+from backend.eeg.event_logger import EEGEventLogger
+from backend.eeg.egi_client import EGIClient
 from zsceval.envs.overcooked_new.src.overcooked_ai_py.mdp.actions import Action
 
 from backend.data.schema import (
@@ -43,6 +44,7 @@ RATING_DURATION_MS = 20_000
 BREAK_DURATION_MS = 5_000
 PLAYER_HAT = "blue"
 AI_HAT = "red"
+LOG_EVERY_GAME_STEP = False
 # ---------------------------------------------------------------------------
 # Per-connection state
 # ---------------------------------------------------------------------------
@@ -52,13 +54,14 @@ AI_HAT = "red"
 class ConnectionState:
     engine: Optional[OvercookedEngine] = None
     session: Optional[SessionManager] = None
-    latest_player_action: Any = None  # overwrite slot; None → STAY
-    tick_task: Optional[asyncio.Task] = None  # type: ignore[type-arg]
+    latest_player_action: Any = None
+    tick_task: Optional[asyncio.Task] = None
     tick_timestamps: List[float] = field(default_factory=list)
-    trial_trajectories: Dict[int, List[Dict[str, Any]]] = field(
-        default_factory=dict
-    )
+    trial_trajectories: Dict[int, List[Dict[str, Any]]] = field(default_factory=dict)
 
+    eeg_logger: Optional[EEGEventLogger] = None
+    egi_client: EGIClient = field(default_factory=EGIClient)
+    session_ended: bool = False
 
 # ---------------------------------------------------------------------------
 # Tick driver (10 Hz)
@@ -91,6 +94,44 @@ async def _tick_loop(websocket: WebSocket, conn: ConnectionState) -> None:
 
         # Step the engine — synchronous; AI action is selected inside engine.step().
         result = conn.engine.step(player_action)
+
+
+        if (
+                conn.eeg_logger is not None
+                and conn.session is not None
+                and player_action != Action.STAY
+        ):
+            conn.eeg_logger.emit(
+                "PLAYER_ACTION_APPLIED",
+                session_id=conn.session.session_id,
+                trial_id=conn.session.current_trial_id(),
+                step_index=result.step_index,
+                action=str(player_action),
+            )
+
+        if conn.eeg_logger is not None and conn.session is not None:
+            trial_id = conn.session.current_trial_id()
+
+            if LOG_EVERY_GAME_STEP:
+                conn.eeg_logger.emit(
+                    "GAME_STEP",
+                    session_id=conn.session.session_id,
+                    trial_id=trial_id,
+                    step_index=result.step_index,
+                    player_action=str(player_action),
+                    reward=list(result.rewards),
+                    score=result.next_state.score,
+                )
+
+            for event in result.events:
+                conn.eeg_logger.emit(
+                    "GAME_EVENT",
+                    session_id=conn.session.session_id,
+                    trial_id=trial_id,
+                    step_index=result.step_index,
+                    event=event.model_dump(),
+                )
+
 
         # Serialize state
         state_payload = result.next_state.model_dump()
@@ -211,25 +252,105 @@ async def websocket_handler(websocket: WebSocket) -> None:
 
                 conn.tick_task = asyncio.create_task(_tick_loop(websocket, conn))
 
+
+
+
             elif msg_type == "player_action":
-                action_name = data.get("payload", {}).get("action", "STAY")
+
+                payload = data.get("payload", {})
+
+                action_name = payload.get("action", "STAY")
+
+                if conn.eeg_logger is not None:
+                    conn.eeg_logger.emit(
+
+                        "PLAYER_ACTION_RECEIVED",
+
+                        session_id=conn.session.session_id if conn.session else None,
+
+                        trial_id=conn.session.current_trial_id() if conn.session else None,
+
+                        action=action_name,
+
+                        client_keydown_wall_time_ms=payload.get("client_keydown_wall_time_ms"),
+
+                        client_keydown_perf_ms=payload.get("client_keydown_perf_ms"),
+
+                        client_send_wall_time_ms=payload.get("client_send_wall_time_ms"),
+
+                        client_send_perf_ms=payload.get("client_send_perf_ms"),
+
+                    )
+
                 conn.latest_player_action = ACTION_MAP.get(action_name, Action.STAY)
 
+
+            elif msg_type == "render_ack":
+
+                payload = data.get("payload", {})
+
+                if conn.eeg_logger is not None:
+                    conn.eeg_logger.emit(
+
+                        "RENDER_ACK",
+
+                        session_id=conn.session.session_id if conn.session else None,
+
+                        trial_id=payload.get("trial_id"),
+
+                        step_index=payload.get("step_index"),
+
+                        render_event_type=payload.get("event_type"),
+
+                        client_render_wall_time_ms=payload.get("client_render_wall_time_ms"),
+
+                        client_render_perf_ms=payload.get("client_render_perf_ms"),
+
+                    )
+
+
             elif msg_type == "end_game":
+
                 await _cancel_tick_task(conn)
 
             # --- Task 4 trial/session protocol ---
             elif msg_type == "start_session":
                 parsed = StartSessionMessage.model_validate(data)
                 await _cancel_tick_task(conn)
+
                 conn.engine = None
                 conn.session = SessionManager(parsed.payload.session_id)
+                conn.eeg_logger = EEGEventLogger(session_id=parsed.payload.session_id)
+                conn.eeg_logger.emit(
+                    "EGI_CONFIG",
+                    enabled=conn.egi_client.config.enabled,
+                    ip_ns=conn.egi_client.config.ip_ns,
+                    ip_amp=conn.egi_client.config.ip_amp,
+                    port_ns=conn.egi_client.config.port_ns,
+                )
+                conn.session_ended = False
+                conn.eeg_logger.emit(
+                    "SESSION_START",
+                    session_id=parsed.payload.session_id,
+                )
+
+                conn.egi_client.connect_and_begin()
+                conn.egi_client.send_event("SSTR", "SESSION_START")
+
                 conn.trial_trajectories = {}
                 conn.session.trial_manager.start_instruction(
                     trial_id=conn.session.current_trial_id(),
                     condition=conn.session.current_condition(),
                 )
-                # Send trial_start — await required: WebSocket.send_json() is async
+
+                conn.eeg_logger.emit(
+                    "TRIAL_START",
+                    session_id=conn.session.session_id,
+                    trial_id=conn.session.current_trial_id(),
+                    phase="instruction",
+                )
+                conn.egi_client.send_event("TSTR", f"TRIAL_{conn.session.current_trial_id()}_START")
+
                 await websocket.send_json(_trial_start_message(conn.session).model_dump())
 
             elif msg_type == "phase_ready":
@@ -252,6 +373,26 @@ async def websocket_handler(websocket: WebSocket) -> None:
                     quality=parsed.payload.quality,
                     intent_alignment=parsed.payload.intent_alignment,
                 )
+                if conn.eeg_logger is not None:
+                    conn.eeg_logger.emit(
+                        "RATING_SUBMIT",
+                        session_id=conn.session.session_id,
+                        trial_id=result.trial_id,
+                        quality=parsed.payload.quality,
+                        intent_alignment=parsed.payload.intent_alignment,
+                        excluded=result.excluded,
+                        exclusion_reason=result.exclusion_reason,
+                    )
+                if conn.eeg_logger is not None:
+                    conn.eeg_logger.emit(
+                        "TRIAL_END",
+                        session_id=conn.session.session_id,
+                        trial_id=result.trial_id,
+                        excluded=result.excluded,
+                        exclusion_reason=result.exclusion_reason,
+                    )
+
+                conn.egi_client.send_event("TEND", f"TRIAL_{result.trial_id}_END")
                 rating_ack = RatingAckMessage(
                     type="rating_ack",
                     payload=RatingAckPayload(
@@ -278,6 +419,21 @@ async def websocket_handler(websocket: WebSocket) -> None:
                     replay_trials=replay_trials,
                     selections=parsed.payload.trials,
                 )
+                if conn.eeg_logger is not None:
+                    conn.eeg_logger.emit(
+                        "PHASE3_SUBMIT",
+                        session_id=conn.session.session_id,
+                        n_trials=len(parsed.payload.trials),
+                    )
+                    conn.eeg_logger.emit(
+                        "SESSION_END",
+                        session_id=conn.session.session_id,
+                    )
+                    conn.session_ended = True
+
+                conn.egi_client.send_event("SEND", "SESSION_END")
+                conn.egi_client.end_and_disconnect()
+
                 complete = PhaseThreeCompleteMessage(
                     type="phase3_complete",
                     payload=PhaseThreeCompletePayload(
@@ -287,8 +443,24 @@ async def websocket_handler(websocket: WebSocket) -> None:
                 )
                 await websocket.send_json(complete.model_dump())
 
+
+
     except WebSocketDisconnect:
+
         await _cancel_tick_task(conn)
+
+        if conn.eeg_logger is not None and not conn.session_ended:
+            conn.eeg_logger.emit(
+
+                "SESSION_DISCONNECT",
+
+                session_id=conn.session.session_id if conn.session else None,
+
+            )
+
+            conn.egi_client.send_event("SDCN", "SESSION_DISCONNECT")
+
+        conn.egi_client.end_and_disconnect()
     except asyncio.CancelledError:
         pass
 
@@ -314,6 +486,17 @@ async def _start_play_phase(websocket: WebSocket, conn: ConnectionState) -> None
     initial_state = conn.engine.reset()
     initial_payload = initial_state.model_dump()
     conn.session.trial_manager.start_play()
+
+    if conn.eeg_logger is not None:
+        conn.eeg_logger.emit(
+            "PLAY_START_SERVER",
+            session_id=conn.session.session_id,
+            trial_id=conn.session.current_trial_id(),
+            layout_name=conn.engine.layout_name,
+            model_checkpoint=condition.model_checkpoint,
+        )
+    conn.egi_client.send_event("PSTR", f"TRIAL_{conn.session.current_trial_id()}_PLAY_START")
+
     conn.tick_timestamps = []
     conn.trial_trajectories[conn.session.current_trial_id()] = [initial_payload]
 
@@ -335,7 +518,21 @@ async def _end_play_phase(websocket: WebSocket, conn: ConnectionState) -> None:
     assert conn.session is not None
     await _cancel_tick_task(conn)
     conn.session.trial_manager.end_play()
-    # Send phase_change — await required: WebSocket.send_json() is async
+
+    if conn.eeg_logger is not None:
+        conn.eeg_logger.emit(
+            "PLAY_END_SERVER",
+            session_id=conn.session.session_id,
+            trial_id=conn.session.current_trial_id(),
+        )
+        conn.eeg_logger.emit(
+            "RATING_START_SERVER",
+            session_id=conn.session.session_id,
+            trial_id=conn.session.current_trial_id(),
+        )
+
+    conn.egi_client.send_event("PEND", f"TRIAL_{conn.session.current_trial_id()}_PLAY_END")
+
     await websocket.send_json(_phase_change_message(TrialPhase.RATING).model_dump())
 
 
@@ -347,9 +544,25 @@ async def _complete_break_or_session(websocket: WebSocket, conn: ConnectionState
             trial_id=conn.session.current_trial_id(),
             condition=conn.session.current_condition(),
         )
-        # Send trial_start — await required: WebSocket.send_json() is async
+
+        if conn.eeg_logger is not None:
+            conn.eeg_logger.emit(
+                "TRIAL_START",
+                session_id=conn.session.session_id,
+                trial_id=conn.session.current_trial_id(),
+                phase="instruction",
+            )
+
+        conn.egi_client.send_event("TSTR", f"TRIAL_{conn.session.current_trial_id()}_START")
+
         await websocket.send_json(_trial_start_message(conn.session).model_dump())
         return
+
+    if conn.eeg_logger is not None:
+        conn.eeg_logger.emit(
+            "PHASE3_START",
+            session_id=conn.session.session_id,
+        )
 
     phase_three = PhaseThreeStartMessage(
         type="phase3_start",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pathlib
 import pickle
 import re
 from dataclasses import dataclass
@@ -17,6 +18,8 @@ from zsceval.envs.overcooked_new.src.overcooked_ai_py.mdp.overcooked_mdp import 
     OvercookedState,
 )
 
+_HUMAN_EXP_ROOT = Path(__file__).resolve().parents[2]
+_CHECKPOINT_ROOT = _HUMAN_EXP_ROOT / "checkpoint"
 
 CheckpointId = Literal[
     "tomato",
@@ -71,77 +74,37 @@ class _ExplicitCheckpointSpec:
 _EXPLICIT_CHECKPOINT_SPECS = {
     "tto_sp_seed4": _ExplicitCheckpointSpec(
         layout_name="tto",
-        run_dir=Path("results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4"),
-        config_path=Path(
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4/"
-            "policy_config.pkl"
-        ),
-        actor_path=Path(
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4/"
-            "models/actor_periodic_10000000.pt"
-        ),
-        critic_path=Path(
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4/"
-            "models/critic_periodic_10000000.pt"
-        ),
+        run_dir=_CHECKPOINT_ROOT / "tto_seed4",
+        config_path=_CHECKPOINT_ROOT / "tto_seed4" / "policy_config.pkl",
+        actor_path=_CHECKPOINT_ROOT / "tto_seed4" / "actor_periodic_10000000.pt",
+        critic_path=_CHECKPOINT_ROOT / "tto_seed4" / "critic_periodic_10000000.pt",
         step=10_000_000,
     ),
     "tto_sp_seed5": _ExplicitCheckpointSpec(
         layout_name="tto",
-        run_dir=Path("results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5"),
-        config_path=Path(
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5/"
-            "policy_config.pkl"
-        ),
-        actor_path=Path(
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5/"
-            "models/actor_periodic_10000000.pt"
-        ),
-        critic_path=Path(
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5/"
-            "models/critic_periodic_10000000.pt"
-        ),
+        run_dir=_CHECKPOINT_ROOT / "tto_seed5",
+        config_path=_CHECKPOINT_ROOT / "tto_seed5" / "policy_config.pkl",
+        actor_path=_CHECKPOINT_ROOT / "tto_seed5" / "actor_periodic_10000000.pt",
+        critic_path=_CHECKPOINT_ROOT / "tto_seed5" / "critic_periodic_10000000.pt",
         step=10_000_000,
     ),
     "ttt_adaptive_seed1": _ExplicitCheckpointSpec(
         layout_name="ttt",
-        run_dir=Path(
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed1"
-        ),
-        config_path=Path(
-            "zsceval/scripts/policy_pool/ttt/policy_config/"
-            "rnn_policy_config.pkl"
-        ),
-        actor_path=Path(
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed1/"
-            "models/hsp_adaptive/actor_periodic_50000000.pt"
-        ),
+        run_dir=_CHECKPOINT_ROOT / "ttt_seed1",
+        config_path=_CHECKPOINT_ROOT / "ttt_policy_config" / "rnn_policy_config.pkl",
+        actor_path=_CHECKPOINT_ROOT / "ttt_seed1" / "actor_periodic_50000000.pt",
         critic_path=None,
         step=50_000_000,
-        runtime_config_path=Path(
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed1/"
-            "policy_config.pkl"
-        ),
+        runtime_config_path=_CHECKPOINT_ROOT / "ttt_seed1" / "policy_config.pkl",
     ),
     "ttt_adaptive_seed2": _ExplicitCheckpointSpec(
         layout_name="ttt",
-        run_dir=Path(
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed2"
-        ),
-        config_path=Path(
-            "zsceval/scripts/policy_pool/ttt/policy_config/"
-            "rnn_policy_config.pkl"
-        ),
-        actor_path=Path(
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed2/"
-            "models/hsp_adaptive/actor_periodic_50000000.pt"
-        ),
+        run_dir=_CHECKPOINT_ROOT / "ttt_seed2",
+        config_path=_CHECKPOINT_ROOT / "ttt_policy_config" / "rnn_policy_config.pkl",
+        actor_path=_CHECKPOINT_ROOT / "ttt_seed2" / "actor_periodic_50000000.pt",
         critic_path=None,
         step=50_000_000,
-        runtime_config_path=Path(
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed2/"
-            "policy_config.pkl"
-        ),
+        runtime_config_path=_CHECKPOINT_ROOT / "ttt_seed2" / "policy_config.pkl",
     ),
 }
 
@@ -382,20 +345,40 @@ def _resolve_checkpoint_paths(checkpoint_id: str) -> _CheckpointPaths:
         step=step,
     )
 
+def _pickle_load_windows_compatible(file_obj: Any) -> Any:
+    """Load pickles that may contain pathlib.PosixPath objects on Windows.
+
+    Some checkpoint configs were created on macOS/Linux and contain
+    pathlib.PosixPath. Windows cannot instantiate PosixPath directly, so we
+    temporarily map it to WindowsPath while unpickling.
+    """
+    original_posix_path = pathlib.PosixPath
+
+    if hasattr(pathlib, "WindowsPath"):
+        try:
+            pathlib.PosixPath = pathlib.WindowsPath  # type: ignore[assignment]
+            return pickle.load(file_obj)
+        finally:
+            pathlib.PosixPath = original_posix_path  # type: ignore[assignment]
+
+    return pickle.load(file_obj)
 
 def _load_policy_config(paths: _CheckpointPaths) -> Tuple[Any, Any, Any, Any]:
     with paths.config_path.open("rb") as config_file:
-        policy_config = pickle.load(config_file)
+        policy_config = _pickle_load_windows_compatible(config_file)
+
     if paths.runtime_config_path is None:
         return cast(Tuple[Any, Any, Any, Any], policy_config)
 
     base_args, _, _, _ = policy_config
     with paths.runtime_config_path.open("rb") as runtime_config_file:
-        runtime_args, obs_space, share_obs_space, act_space = pickle.load(
-            runtime_config_file
+        runtime_args, obs_space, share_obs_space, act_space = (
+            _pickle_load_windows_compatible(runtime_config_file)
         )
+
     for attribute in _ADAPTIVE_CONFIG_OVERRIDES:
         setattr(base_args, attribute, getattr(runtime_args, attribute))
+
     return base_args, obs_space, share_obs_space, act_space
 
 

@@ -62,26 +62,23 @@ def test_hsp_policy_is_deterministic(primary_policy: HSPPolicy) -> None:
 def test_requested_checkpoint_paths_are_exact() -> None:
     expected_actor_paths = {
         "tto_sp_seed4": (
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4/"
-            "models/actor_periodic_10000000.pt"
+            "checkpoint/tto_seed4/actor_periodic_10000000.pt"
         ),
         "tto_sp_seed5": (
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5/"
-            "models/actor_periodic_10000000.pt"
+            "checkpoint/tto_seed5/actor_periodic_10000000.pt"
         ),
         "ttt_adaptive_seed1": (
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed1/"
-            "models/hsp_adaptive/actor_periodic_50000000.pt"
+            "checkpoint/ttt_seed1/actor_periodic_50000000.pt"
         ),
         "ttt_adaptive_seed2": (
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed2/"
-            "models/hsp_adaptive/actor_periodic_50000000.pt"
+            "checkpoint/ttt_seed2/actor_periodic_50000000.pt"
         ),
     }
 
     for checkpoint_id, expected_suffix in expected_actor_paths.items():
         paths = _resolve_checkpoint_paths(checkpoint_id)
-        assert str(paths.actor_path).endswith(expected_suffix)
+        normalized_actor_path = str(paths.actor_path).replace("\\", "/")
+        assert normalized_actor_path.endswith(expected_suffix)
 
 
 def test_engine_requires_policy_for_implicit_ai_action() -> None:
