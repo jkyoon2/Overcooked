@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import {
   createWebSocketClient,
+  type ClientTimingPayload,
   type GameState,
   type PhaseThreeStartPayload,
   type PhaseThreeTrialSelection,
   type RatingPayload,
+  type RenderAckPayload,
   type TrialPhase,
   type TrialStartMessage,
   type WebSocketClient,
@@ -176,8 +178,15 @@ export default function App() {
     setPhase('waiting')
   }, [])
 
-  const handlePlayerAction = useCallback((action: string) => {
-    clientRef.current?.sendPlayerAction(action)
+  const handlePlayerAction = useCallback((
+    action: string,
+    timing: ClientTimingPayload,
+  ) => {
+    clientRef.current?.sendPlayerAction(action, timing)
+  }, [])
+
+  const handleRenderAck = useCallback((payload: RenderAckPayload) => {
+    clientRef.current?.sendRenderAck(payload)
   }, [])
 
   const handleRatingSubmit = useCallback((rating: RatingPayload) => {
@@ -332,6 +341,7 @@ export default function App() {
             deliveries={deliveries}
             onPhaseReady={handlePhaseReady}
             onPlayerAction={handlePlayerAction}
+            onRenderAck={handleRenderAck}
           />
         )}
         {phase === 'rating' && <p>Preparing rating screen...</p>}

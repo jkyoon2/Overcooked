@@ -231,9 +231,10 @@ type GameViewProps = {
   state: GameState
   playerHat: string
   aiHat: string
+  onDrawn?: (state: GameState) => void
 }
 
-export default function GameView({ state, playerHat, aiHat }: GameViewProps) {
+export default function GameView({ state, playerHat, aiHat, onDrawn }: GameViewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const imgsRef   = useRef<Record<string, HTMLImageElement>>({})
   const [imgsReady, setImgsReady] = useState(false)
@@ -270,7 +271,11 @@ export default function GameView({ state, playerHat, aiHat }: GameViewProps) {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     // index 0=human, index 1=AI
     drawGrid(ctx, imgsRef.current, state, terrain, playerHat, aiHat)
-  }, [state, playerHat, aiHat, imgsReady])
+
+    window.requestAnimationFrame(() => {
+      onDrawn?.(state)
+    })
+  }, [state, playerHat, aiHat, imgsReady, onDrawn])
 
   const terrain = LAYOUT_TERRAIN[state.layout_name] ?? GRID_13x5
   const w = terrain[0].length * TILE

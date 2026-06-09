@@ -4,6 +4,13 @@
 // Game message types (mirrors backend/data/schema.py)
 // ---------------------------------------------------------------------------
 
+export type ClientTimingPayload = {
+  client_keydown_wall_time_ms?: number
+  client_keydown_perf_ms?: number
+  client_send_wall_time_ms?: number
+  client_send_perf_ms?: number
+}
+
 export type PlayerSnapshot = {
   position: [number, number]
   orientation: [number, number]
@@ -79,6 +86,14 @@ export type IntentAlignment =
 export type RatingPayload = {
   quality: number
   intent_alignment: IntentAlignment
+}
+
+export type RenderAckPayload = {
+  event_type: 'PLAY_RENDERED'
+  trial_id?: number | null
+  step_index?: number | null
+  client_render_wall_time_ms: number
+  client_render_perf_ms: number
 }
 
 export type TrialPhase = 'instruction' | 'play' | 'rating' | 'break'
@@ -186,7 +201,8 @@ export type WebSocketClient = {
   sendPhaseReady: () => void
   submitRating: (rating: RatingPayload) => void
   submitPhaseThree: (trials: PhaseThreeTrialSelection[]) => void
-  sendPlayerAction: (action: string) => void
+  sendPlayerAction: (action: string, timing?: ClientTimingPayload) => void
+  sendRenderAck: (payload: RenderAckPayload) => void
   endGame: () => void
   setHandlers: (handlers: GameMessageHandlers) => void
   close: () => void
@@ -252,8 +268,21 @@ export function createWebSocketClient(url: string): WebSocketClient {
       socket.send(JSON.stringify({ type: 'submit_rating', payload: rating })),
     submitPhaseThree: (trials) =>
       socket.send(JSON.stringify({ type: 'submit_phase3', payload: { trials } })),
-    sendPlayerAction: (action) =>
-      socket.send(JSON.stringify({ type: 'player_action', payload: { action } })),
+    sendPlayerAction: (action, timing = {}) =>
+      socket.send(JSON.stringify({
+        type: 'player_action',
+        payload: {
+          action,
+          ...timing,
+          client_send_wall_time_ms: Date.now(),
+          client_send_perf_ms: performance.now(),
+        },
+      })),
+    sendRenderAck: (payload) =>
+      socket.send(JSON.stringify({
+        type: 'render_ack',
+        payload,
+      })),
     endGame: () => socket.send(JSON.stringify({ type: 'end_game', payload: {} })),
     setHandlers: (h) => {
       handlers = h

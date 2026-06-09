@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { GameState } from '../lib/websocket'
+import type { ClientTimingPayload, GameState, RenderAckPayload } from '../lib/websocket'
 import GameView from '../components/GameView'
 
 const KEY_ACTION_MAP: Record<string, string> = {
@@ -29,7 +29,8 @@ type PlayScreenProps = {
   gameEnded: boolean
   deliveries: Deliveries
   onPhaseReady: () => void
-  onPlayerAction: (action: string) => void
+  onPlayerAction: (action: string, timing: ClientTimingPayload) => void
+  onRenderAck: (payload: RenderAckPayload) => void
 }
 
 export default function PlayScreen({
@@ -43,9 +44,11 @@ export default function PlayScreen({
   deliveries,
   onPhaseReady,
   onPlayerAction,
+  onRenderAck,
 }: PlayScreenProps) {
   const [overlayVisible, setOverlayVisible] = useState(false)
   const phaseReadySentRef = useRef(false)
+  const playRenderedAckSentRef = useRef(false)
 
   // Keep a stable ref to onPhaseReady so the trigger effect doesn't re-fire
   // when the parent re-renders and passes a new function reference.
@@ -57,6 +60,7 @@ export default function PlayScreen({
   // Reset guard for each trial.
   useEffect(() => {
     phaseReadySentRef.current = false
+    playRenderedAckSentRef.current = false
     setOverlayVisible(false)
   }, [trialId])
 
@@ -77,10 +81,16 @@ export default function PlayScreen({
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       const action = KEY_ACTION_MAP[e.key]
-      if (action) {
-        e.preventDefault()
-        onPlayerAction(action)
-      }
+      if (!action) return
+
+      const clientKeydownWallTimeMs = Date.now()
+      const clientKeydownPerfMs = performance.now()
+
+      e.preventDefault()
+      onPlayerAction(action, {
+        client_keydown_wall_time_ms: clientKeydownWallTimeMs,
+        client_keydown_perf_ms: clientKeydownPerfMs,
+      })
     },
     [onPlayerAction],
   )
@@ -94,6 +104,22 @@ export default function PlayScreen({
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   const timeStr  = `${minutes}:${seconds.toString().padStart(2, '0')}`
+
+  const handleGameDrawn = useCallback(
+    (drawnState: GameState) => {
+      if (playRenderedAckSentRef.current) return
+
+      playRenderedAckSentRef.current = true
+      onRenderAck({
+        event_type: 'PLAY_RENDERED',
+        trial_id: trialId,
+        step_index: drawnState.step_index,
+        client_render_wall_time_ms: Date.now(),
+        client_render_perf_ms: performance.now(),
+      })
+    },
+    [onRenderAck, trialId],
+  )
 
   return (
     <div style={{ position: 'relative', fontFamily: 'system-ui, sans-serif' }}>
@@ -138,7 +164,7 @@ export default function PlayScreen({
 
       {/* Game grid */}
       {gameState ? (
-        <GameView state={gameState} playerHat={playerHat} aiHat={aiHat} />
+        <GameView state={gameState} playerHat={playerHat} aiHat={aiHat} onDrawn={handleGameDrawn}/>
       ) : (
         <div
           style={{
