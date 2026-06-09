@@ -115,7 +115,7 @@ export default function RatingScreen({
                 textTransform: 'uppercase',
               }}
             >
-              Phase 2, Trial {trialId}
+              Phase 1, Trial {trialId}
             </p>
             <h1 style={{ margin: 0, fontSize: '2.3rem', lineHeight: 1.05, letterSpacing: 0 }}>
               Trial {trialId} Rating

@@ -25,10 +25,14 @@ CheckpointId = Literal[
     "tto",
     "too",
     "ooo",
-    "tto_sp_seed4",
-    "tto_sp_seed5",
-    "ttt_adaptive_seed1",
-    "ttt_adaptive_seed2",
+    "tto_mep1",
+    "tto_mep2",
+    "tto_mep3",
+    "tto_mep4",
+    "too_mep1",
+    "too_mep2",
+    "too_mep3",
+    "too_mep4",
 ]
 _LAYOUT_BY_CHECKPOINT_ID: Dict[str, str] = {
     "tomato": "ttt",
@@ -37,10 +41,14 @@ _LAYOUT_BY_CHECKPOINT_ID: Dict[str, str] = {
     "tto": "tto",
     "too": "too",
     "ooo": "ooo",
-    "tto_sp_seed4": "tto",
-    "tto_sp_seed5": "tto",
-    "ttt_adaptive_seed1": "ttt",
-    "ttt_adaptive_seed2": "ttt",
+    "tto_mep1": "tto",
+    "tto_mep2": "tto",
+    "tto_mep3": "tto",
+    "tto_mep4": "tto",
+    "too_mep1": "too",
+    "too_mep2": "too",
+    "too_mep3": "too",
+    "too_mep4": "too",
 }
 _DEFAULT_RELATIVE_RUN = Path("shared") / "rmappo" / "hsp-S1" / "seed1"
 _PERIODIC_MODEL_RE = re.compile(r"^(actor|critic)_periodic_(\d+)\.pt$")
@@ -68,81 +76,22 @@ class _ExplicitCheckpointSpec:
     runtime_config_path: Optional[Path] = None
 
 
+def _mep_spec(layout: str, variant: int) -> _ExplicitCheckpointSpec:
+    run_dir = Path(f"results/Overcooked/{layout}/shared/mep/mep-S1-s5/seed1")
+    return _ExplicitCheckpointSpec(
+        layout_name=layout,
+        run_dir=run_dir,
+        config_path=run_dir / "policy_config.pkl",
+        actor_path=run_dir / "models" / f"mep{variant}" / "actor_periodic_10000000.pt",
+        critic_path=None,
+        step=10_000_000,
+    )
+
+
 _EXPLICIT_CHECKPOINT_SPECS = {
-    "tto_sp_seed4": _ExplicitCheckpointSpec(
-        layout_name="tto",
-        run_dir=Path("results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4"),
-        config_path=Path(
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4/"
-            "policy_config.pkl"
-        ),
-        actor_path=Path(
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4/"
-            "models/actor_periodic_10000000.pt"
-        ),
-        critic_path=Path(
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4/"
-            "models/critic_periodic_10000000.pt"
-        ),
-        step=10_000_000,
-    ),
-    "tto_sp_seed5": _ExplicitCheckpointSpec(
-        layout_name="tto",
-        run_dir=Path("results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5"),
-        config_path=Path(
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5/"
-            "policy_config.pkl"
-        ),
-        actor_path=Path(
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5/"
-            "models/actor_periodic_10000000.pt"
-        ),
-        critic_path=Path(
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5/"
-            "models/critic_periodic_10000000.pt"
-        ),
-        step=10_000_000,
-    ),
-    "ttt_adaptive_seed1": _ExplicitCheckpointSpec(
-        layout_name="ttt",
-        run_dir=Path(
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed1"
-        ),
-        config_path=Path(
-            "zsceval/scripts/policy_pool/ttt/policy_config/"
-            "rnn_policy_config.pkl"
-        ),
-        actor_path=Path(
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed1/"
-            "models/hsp_adaptive/actor_periodic_50000000.pt"
-        ),
-        critic_path=None,
-        step=50_000_000,
-        runtime_config_path=Path(
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed1/"
-            "policy_config.pkl"
-        ),
-    ),
-    "ttt_adaptive_seed2": _ExplicitCheckpointSpec(
-        layout_name="ttt",
-        run_dir=Path(
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed2"
-        ),
-        config_path=Path(
-            "zsceval/scripts/policy_pool/ttt/policy_config/"
-            "rnn_policy_config.pkl"
-        ),
-        actor_path=Path(
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed2/"
-            "models/hsp_adaptive/actor_periodic_50000000.pt"
-        ),
-        critic_path=None,
-        step=50_000_000,
-        runtime_config_path=Path(
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed2/"
-            "policy_config.pkl"
-        ),
-    ),
+    f"{layout}_mep{variant}": _mep_spec(layout, variant)
+    for layout in ("tto", "too")
+    for variant in (1, 2, 3, 4)
 }
 
 
@@ -183,7 +132,8 @@ class HSPPolicy:
 
         args, obs_space, share_obs_space, act_space = policy_config
         algorithm_name = getattr(args, "algorithm_name", None)
-        if algorithm_name not in {"rmappo", "mappo"}:
+        # MEP / HSP training pipelines reuse R_MAPPOPolicy as the actor backbone.
+        if algorithm_name not in {"rmappo", "mappo", "mep", "hsp"}:
             raise ValueError(
                 f"Unsupported policy algorithm for HSPPolicy: {algorithm_name!r}"
             )

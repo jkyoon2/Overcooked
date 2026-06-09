@@ -281,7 +281,13 @@ export default function GameView({ state, playerHat, aiHat }: GameViewProps) {
       ref={canvasRef}
       width={w}
       height={h}
-      style={{ imageRendering: 'pixelated', display: 'block' }}
+      style={{
+        imageRendering: 'pixelated',
+        display: 'block',
+        width: '100%',
+        height: 'auto',
+        maxWidth: `${w}px`,
+      }}
     />
   )
 }

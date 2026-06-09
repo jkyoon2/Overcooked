@@ -78,7 +78,7 @@ export default function InstructionScreen({
             textTransform: 'uppercase',
           }}
         >
-          Phase 2, Trial {trialId}
+          Phase 1, Trial {trialId}
         </span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
           <h1

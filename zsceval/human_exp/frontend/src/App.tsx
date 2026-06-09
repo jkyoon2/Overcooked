@@ -2,23 +2,24 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import {
   createWebSocketClient,
   type GameState,
-  type PhaseThreeStartPayload,
-  type PhaseThreeTrialSelection,
+  type PhaseTwoStartPayload,
+  type PhaseTwoTrialSelection,
   type RatingPayload,
   type TrialPhase,
   type TrialStartMessage,
   type WebSocketClient,
 } from './lib/websocket'
+import IdleScreen from './screens/IdleScreen'
 import InstructionScreen from './screens/InstructionScreen'
 import PlayScreen from './screens/PlayScreen'
 import RatingScreen from './screens/RatingScreen'
 import BreakScreen from './screens/BreakScreen'
-import PhaseThreeScreen from './screens/PhaseThreeScreen'
+import PhaseTwoScreen from './screens/PhaseTwoScreen'
 
 const DEFAULT_SESSION_ID = 'TEST_S01'
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected'
-type AppPhase = 'idle' | 'waiting' | TrialPhase | 'phase3' | 'complete'
+type AppPhase = 'idle' | 'waiting' | TrialPhase | 'phase2' | 'complete'
 type InstructionPayload = TrialStartMessage['payload']
 
 export default function App() {
@@ -28,12 +29,13 @@ export default function App() {
   const [playerHat, setPlayerHat] = useState('')
   const [aiHat, setAiHat] = useState('')
   const [currentTrialId, setCurrentTrialId] = useState<number | null>(null)
+  const [totalTrials, setTotalTrials] = useState<number | null>(null)
   const [ratingDurationMs, setRatingDurationMs] = useState(20_000)
   const [breakDurationMs, setBreakDurationMs] = useState(5_000)
   const [gameState, setGameState] = useState<GameState | null>(null)
   const [gameEnded, setGameEnded] = useState(false)
-  const [phaseThreeData, setPhaseThreeData] = useState<PhaseThreeStartPayload | null>(null)
-  const [phaseThreeSubmitting, setPhaseThreeSubmitting] = useState(false)
+  const [phaseTwoData, setPhaseTwoData] = useState<PhaseTwoStartPayload | null>(null)
+  const [phaseTwoSubmitting, setPhaseTwoSubmitting] = useState(false)
   const [deliveries, setDeliveries] = useState({ ttt: 0, tto: 0, too: 0, ooo: 0 })
   const clientRef = useRef<WebSocketClient | null>(null)
   const connectPollRef = useRef<number | null>(null)
@@ -71,12 +73,12 @@ export default function App() {
         setPlayerHat(msg.payload.player_hat)
         setAiHat(msg.payload.ai_hat)
         setCurrentTrialId(msg.payload.trial_id)
+        setTotalTrials(msg.payload.total_trials)
       },
       onPhaseChange: (msg) => {
         setInstruction(null)
         setPhase(msg.payload.phase)
         if (msg.payload.phase === 'play') {
-          // reset game state before game_start arrives
           setGameState(null)
           setGameEnded(false)
           setDeliveries({ ttt: 0, tto: 0, too: 0, ooo: 0 })
@@ -92,14 +94,14 @@ export default function App() {
         setInstruction(null)
         setPhase('complete')
       },
-      onPhaseThreeStart: (msg) => {
+      onPhaseTwoStart: (msg) => {
         setInstruction(null)
-        setPhaseThreeData(msg.payload)
-        setPhaseThreeSubmitting(false)
-        setPhase('phase3')
+        setPhaseTwoData(msg.payload)
+        setPhaseTwoSubmitting(false)
+        setPhase('phase2')
       },
-      onPhaseThreeComplete: () => {
-        setPhaseThreeSubmitting(false)
+      onPhaseTwoComplete: () => {
+        setPhaseTwoSubmitting(false)
         setPhase('complete')
       },
       onRatingAck: () => {
@@ -129,7 +131,6 @@ export default function App() {
     })
     clientRef.current = client
 
-    // Poll readyState until open (WebSocket does not expose an onopen via our wrapper)
     connectPollRef.current = window.setInterval(() => {
       if (client.isOpen()) {
         setConnectionStatus('connected')
@@ -159,6 +160,7 @@ export default function App() {
 
   const startSession = useCallback(() => {
     if (!clientRef.current?.isOpen()) return
+    if (sessionStartedRef.current) return
     setPhase('waiting')
     setInstruction(null)
     sessionStartedRef.current = true
@@ -170,7 +172,6 @@ export default function App() {
     setPhase('waiting')
   }, [])
 
-  // Stable callbacks so PlayScreen effects don't re-fire on every App re-render
   const handlePhaseReady = useCallback(() => {
     clientRef.current?.sendPhaseReady()
     setPhase('waiting')
@@ -184,10 +185,10 @@ export default function App() {
     clientRef.current?.submitRating(rating)
   }, [])
 
-  const handlePhaseThreeSubmit = useCallback((trials: PhaseThreeTrialSelection[]) => {
+  const handlePhaseTwoSubmit = useCallback((trials: PhaseTwoTrialSelection[]) => {
     if (!clientRef.current?.isOpen()) return
-    setPhaseThreeSubmitting(true)
-    clientRef.current.submitPhaseThree(trials)
+    setPhaseTwoSubmitting(true)
+    clientRef.current.submitPhaseTwo(trials)
   }, [])
 
   useEffect(() => {
@@ -222,17 +223,6 @@ export default function App() {
   }, [connectionStatus, connect])
 
   useEffect(() => {
-    if (
-      connectionStatus === 'connected'
-      && phase === 'idle'
-      && !sessionStartedRef.current
-      && clientRef.current?.isOpen()
-    ) {
-      startSession()
-    }
-  }, [connectionStatus, phase, startSession])
-
-  useEffect(() => {
     if (phase !== 'break') return
     const timer = window.setTimeout(() => {
       clientRef.current?.sendPhaseReady()
@@ -241,16 +231,21 @@ export default function App() {
     return () => window.clearTimeout(timer)
   }, [phase, breakDurationMs])
 
-  if (connectionStatus !== 'connected' || !clientRef.current) {
+  if (connectionStatus === 'disconnected') {
     return (
       <div style={pageStyle}>
         <h1>Neurocontroller</h1>
-        <p>
-          {connectionStatus === 'connecting'
-            ? 'Connecting to the experiment server...'
-            : 'Connection lost. Retrying automatically...'}
-        </p>
+        <p>Connection lost. Retrying automatically…</p>
       </div>
+    )
+  }
+
+  if (phase === 'idle') {
+    return (
+      <IdleScreen
+        connected={connectionStatus === 'connected' && !!clientRef.current?.isOpen()}
+        onStart={startSession}
+      />
     )
   }
 
@@ -276,12 +271,12 @@ export default function App() {
     )
   }
 
-  if (phase === 'phase3' && phaseThreeData !== null) {
+  if (phase === 'phase2' && phaseTwoData !== null) {
     return (
-      <PhaseThreeScreen
-        data={phaseThreeData}
-        submitting={phaseThreeSubmitting}
-        onSubmit={handlePhaseThreeSubmit}
+      <PhaseTwoScreen
+        data={phaseTwoData}
+        submitting={phaseTwoSubmitting}
+        onSubmit={handlePhaseTwoSubmit}
       />
     )
   }
@@ -305,21 +300,14 @@ export default function App() {
             {phase === 'complete'
               ? 'Experiment complete'
               : currentTrialId === null
-                ? 'Phase 2'
-                : `Phase 2, Trial ${currentTrialId}`}
+                ? 'Phase 1'
+                : `Phase 1, Trial ${currentTrialId}${totalTrials ? ` of ${totalTrials}` : ''}`}
           </span>
         </div>
       </header>
 
       <main style={pageStyle}>
-        {phase === 'idle' && (
-          <>
-            <h1>Session</h1>
-            <p>Starting session...</p>
-          </>
-        )}
-
-        {phase === 'waiting' && <p>Waiting for the next phase...</p>}
+        {phase === 'waiting' && <p>Waiting for the next phase…</p>}
         {phase === 'play' && (
           <PlayScreen
             trialId={currentTrialId ?? 1}
@@ -334,7 +322,7 @@ export default function App() {
             onPlayerAction={handlePlayerAction}
           />
         )}
-        {phase === 'rating' && <p>Preparing rating screen...</p>}
+        {phase === 'rating' && <p>Preparing rating screen…</p>}
         {phase === 'break' && currentTrialId !== null && (
           <BreakScreen
             completedTrial={currentTrialId}
@@ -360,7 +348,7 @@ export default function App() {
                 textTransform: 'uppercase',
               }}
             >
-              Phase 3 complete
+              Phase 2 complete
             </p>
             <h1 style={{ margin: 0 }}>Replay annotations are saved.</h1>
             <p style={{ margin: '0.75rem 0 0', color: '#475569' }}>
@@ -375,7 +363,8 @@ export default function App() {
 
 function getWebSocketUrl(): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${protocol}//${window.location.hostname}:8000/ws`
+  const port = import.meta.env.VITE_BACKEND_PORT ?? '8001'
+  return `${protocol}//${window.location.hostname}:${port}/ws`
 }
 
 const pageStyle = {

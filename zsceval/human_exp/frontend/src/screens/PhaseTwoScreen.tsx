@@ -7,15 +7,15 @@ import {
 } from 'react'
 import GameView from '../components/GameView'
 import type {
-  PhaseThreeSegmentSelection,
-  PhaseThreeStartPayload,
-  PhaseThreeTrialSelection,
+  PhaseTwoSegmentSelection,
+  PhaseTwoStartPayload,
+  PhaseTwoTrialSelection,
 } from '../lib/websocket'
 
-type PhaseThreeScreenProps = {
-  data: PhaseThreeStartPayload
+type PhaseTwoScreenProps = {
+  data: PhaseTwoStartPayload
   submitting: boolean
-  onSubmit: (trials: PhaseThreeTrialSelection[]) => void
+  onSubmit: (trials: PhaseTwoTrialSelection[]) => void
 }
 
 type DragRange = {
@@ -23,11 +23,16 @@ type DragRange = {
   endFrame: number
 }
 
-export default function PhaseThreeScreen({
+type ResizeState = {
+  segmentId: string
+  edge: 'start' | 'end'
+}
+
+export default function PhaseTwoScreen({
   data,
   submitting,
   onSubmit,
-}: PhaseThreeScreenProps) {
+}: PhaseTwoScreenProps) {
   const [trialIndex, setTrialIndex] = useState(0)
   const [frameIndex, setFrameIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(true)
@@ -35,8 +40,9 @@ export default function PhaseThreeScreen({
   const [segmentEndFrame, setSegmentEndFrame] = useState<number | null>(null)
   const [dragRange, setDragRange] = useState<DragRange | null>(null)
   const [segmentsByTrial, setSegmentsByTrial] = useState<
-    Record<number, PhaseThreeSegmentSelection[]>
+    Record<number, PhaseTwoSegmentSelection[]>
   >({})
+  const [resizeState, setResizeState] = useState<ResizeState | null>(null)
   const timelineRef = useRef<HTMLDivElement>(null)
   const dragStartRef = useRef<number | null>(null)
   const segmentSequenceRef = useRef(0)
@@ -79,7 +85,7 @@ export default function PhaseThreeScreen({
   if (!trial || !currentFrame) {
     return (
       <main style={emptyPageStyle}>
-        <h1>Phase 3</h1>
+        <h1>Phase 2</h1>
         <p>No replay frames were recorded.</p>
       </main>
     )
@@ -101,7 +107,7 @@ export default function PhaseThreeScreen({
     setIsPlaying((playing) => !playing)
   }
 
-  const replaySegment = (segment: PhaseThreeSegmentSelection) => {
+  const replaySegment = (segment: PhaseTwoSegmentSelection) => {
     setFrameIndex(segment.start_frame)
     setSegmentEndFrame(segment.end_frame)
     setIsPlaying(true)
@@ -116,6 +122,7 @@ export default function PhaseThreeScreen({
   }
 
   const beginDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (resizeState !== null) return
     event.currentTarget.setPointerCapture(event.pointerId)
     const targetFrame = frameFromPointer(event.clientX)
     dragStartRef.current = targetFrame
@@ -141,7 +148,7 @@ export default function PhaseThreeScreen({
     setDragRange(null)
 
     segmentSequenceRef.current += 1
-    const segment: PhaseThreeSegmentSelection = {
+    const segment: PhaseTwoSegmentSelection = {
       segment_id: `${trial.trial_id}-${Date.now()}-${segmentSequenceRef.current}`,
       start_frame: rangeStart,
       end_frame: rangeEnd,
@@ -158,6 +165,48 @@ export default function PhaseThreeScreen({
     setDragRange(null)
   }
 
+  const beginResize = (
+    segmentId: string,
+    edge: 'start' | 'end',
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    event.stopPropagation()
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setResizeState({ segmentId, edge })
+    setIsPlaying(false)
+    setSegmentEndFrame(null)
+  }
+
+  const updateResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (resizeState === null) return
+    event.stopPropagation()
+    const pointerFrame = frameFromPointer(event.clientX)
+    setSegmentsByTrial((current) => {
+      const trialSegments = current[trial.trial_id] ?? []
+      const next = trialSegments.map((segment) => {
+        if (segment.segment_id !== resizeState.segmentId) return segment
+        const nextStart =
+          resizeState.edge === 'start' ? pointerFrame : segment.start_frame
+        const nextEnd =
+          resizeState.edge === 'end' ? pointerFrame : segment.end_frame
+        return {
+          ...segment,
+          start_frame: Math.min(nextStart, nextEnd),
+          end_frame: Math.max(nextStart, nextEnd),
+        }
+      })
+      return { ...current, [trial.trial_id]: next }
+    })
+    setFrameIndex(clamp(pointerFrame, 0, maxFrame))
+  }
+
+  const finishResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (resizeState === null) return
+    event.stopPropagation()
+    setResizeState(null)
+  }
+
   const deleteSegment = (segmentId: string) => {
     setSegmentsByTrial((current) => ({
       ...current,
@@ -167,7 +216,7 @@ export default function PhaseThreeScreen({
     }))
   }
 
-  const submitPhaseThree = () => {
+  const submitPhaseTwo = () => {
     onSubmit(
       data.trials.map((replayTrial) => ({
         trial_id: replayTrial.trial_id,
@@ -188,7 +237,7 @@ export default function PhaseThreeScreen({
       <header style={headerStyle}>
         <div>
           <strong style={{ fontSize: '1.05rem' }}>Neurocontroller</strong>
-          <span style={phaseLabelStyle}>Phase 3, Replay Trial {trial.trial_id}</span>
+          <span style={phaseLabelStyle}>Phase 2, Replay Trial {trial.trial_id}</span>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           {data.trials.map((replayTrial, index) => {
@@ -222,7 +271,8 @@ export default function PhaseThreeScreen({
               </h1>
               <p style={{ margin: '0.4rem 0 0', color: '#475569' }}>
                 Replay the trial, then drag across the timeline to select each
-                misaligned interval.
+                misaligned interval. Drag the left or right handle of a saved
+                segment to adjust either endpoint.
               </p>
             </div>
             <div style={timeBadgeStyle}>
@@ -260,17 +310,67 @@ export default function PhaseThreeScreen({
               style={timelineStyle}
             >
               <div style={timelineTrackStyle} />
-              {currentSegments.map((segment) => (
-                <div
-                  key={segment.segment_id}
-                  style={{
-                    ...selectionRangeStyle,
-                    ...rangePosition(segment.start_frame, segment.end_frame, maxFrame),
-                    background: 'rgba(37, 99, 235, 0.28)',
-                    borderColor: '#2563eb',
-                  }}
-                />
-              ))}
+              {currentSegments.map((segment) => {
+                const position = rangePosition(
+                  segment.start_frame,
+                  segment.end_frame,
+                  maxFrame,
+                )
+                const isResizing = resizeState?.segmentId === segment.segment_id
+                return (
+                  <div
+                    key={segment.segment_id}
+                    style={{
+                      ...selectionRangeStyle,
+                      ...position,
+                      background: isResizing
+                        ? 'rgba(37, 99, 235, 0.42)'
+                        : 'rgba(37, 99, 235, 0.28)',
+                      borderColor: '#2563eb',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <div
+                      role="slider"
+                      aria-label={`Adjust start of segment from frame ${segment.start_frame}`}
+                      aria-valuemin={0}
+                      aria-valuemax={maxFrame}
+                      aria-valuenow={segment.start_frame}
+                      onPointerDown={(event) => beginResize(segment.segment_id, 'start', event)}
+                      onPointerMove={updateResize}
+                      onPointerUp={finishResize}
+                      onPointerCancel={finishResize}
+                      style={{
+                        ...handleStyle,
+                        left: 0,
+                        background:
+                          isResizing && resizeState?.edge === 'start'
+                            ? '#1d4ed8'
+                            : '#2563eb',
+                      }}
+                    />
+                    <div
+                      role="slider"
+                      aria-label={`Adjust end of segment to frame ${segment.end_frame}`}
+                      aria-valuemin={0}
+                      aria-valuemax={maxFrame}
+                      aria-valuenow={segment.end_frame}
+                      onPointerDown={(event) => beginResize(segment.segment_id, 'end', event)}
+                      onPointerMove={updateResize}
+                      onPointerUp={finishResize}
+                      onPointerCancel={finishResize}
+                      style={{
+                        ...handleStyle,
+                        right: 0,
+                        background:
+                          isResizing && resizeState?.edge === 'end'
+                            ? '#1d4ed8'
+                            : '#2563eb',
+                      }}
+                    />
+                  </div>
+                )
+              })}
               {normalizedDrag !== null && (
                 <div
                   style={{
@@ -282,6 +382,7 @@ export default function PhaseThreeScreen({
                     ),
                     background: 'rgba(239, 68, 68, 0.24)',
                     borderColor: '#ef4444',
+                    pointerEvents: 'none',
                   }}
                 />
               )}
@@ -323,7 +424,8 @@ export default function PhaseThreeScreen({
               </label>
             </div>
             <p style={dragHintStyle}>
-              Click and drag anywhere on the timeline to save a misaligned segment.
+              Drag across an empty area of the timeline to save a new segment.
+              Drag a segment&apos;s left or right edge to fine-tune its endpoints.
             </p>
           </div>
         </section>
@@ -402,14 +504,14 @@ export default function PhaseThreeScreen({
               <button
                 type="button"
                 disabled={submitting}
-                onClick={submitPhaseThree}
+                onClick={submitPhaseTwo}
                 style={{
                   ...nextButtonStyle,
                   opacity: submitting ? 0.65 : 1,
                   cursor: submitting ? 'wait' : 'pointer',
                 }}
               >
-                {submitting ? 'Saving...' : 'Finish Phase 3'}
+                {submitting ? 'Saving...' : 'Finish Phase 2'}
               </button>
             )}
           </div>
@@ -533,7 +635,7 @@ const countBadgeStyle: CSSProperties = {
 const contentStyle: CSSProperties = {
   minHeight: 'calc(100vh - 4.5rem)',
   display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1fr) 23rem',
+  gridTemplateColumns: 'minmax(0, 3fr) minmax(20rem, 2fr)',
 }
 
 const viewerColumnStyle: CSSProperties = {
@@ -546,7 +648,7 @@ const viewerColumnStyle: CSSProperties = {
 }
 
 const introStyle: CSSProperties = {
-  width: 'min(100%, 58rem)',
+  width: '100%',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'flex-start',
@@ -567,7 +669,7 @@ const timeBadgeStyle: CSSProperties = {
 const gamePanelStyle: CSSProperties = {
   position: 'relative',
   minHeight: '18rem',
-  width: 'min(100%, 58rem)',
+  width: '100%',
   display: 'grid',
   placeItems: 'center',
   overflow: 'auto',
@@ -592,7 +694,7 @@ const pausedOverlayStyle: CSSProperties = {
 }
 
 const controlsPanelStyle: CSSProperties = {
-  width: 'min(100%, 58rem)',
+  width: '100%',
   padding: '1.25rem',
   border: '1px solid #dbe3ee',
   borderRadius: '12px',
@@ -628,8 +730,20 @@ const selectionRangeStyle: CSSProperties = {
   height: '1.1rem',
   border: '1px solid',
   borderRadius: '4px',
-  pointerEvents: 'none',
   boxSizing: 'border-box',
+}
+
+const handleStyle: CSSProperties = {
+  position: 'absolute',
+  top: '-0.25rem',
+  bottom: '-0.25rem',
+  width: '0.55rem',
+  borderRadius: '3px',
+  background: '#2563eb',
+  boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.85)',
+  cursor: 'ew-resize',
+  touchAction: 'none',
+  pointerEvents: 'auto',
 }
 
 const playheadStyle: CSSProperties = {

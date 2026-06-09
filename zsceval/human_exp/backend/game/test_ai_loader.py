@@ -13,21 +13,23 @@ from backend.game.ai_loader import (
 from backend.game.engine import ACTION_MAP, OvercookedEngine
 
 
+_MEP_CHECKPOINT_PARAMS = [
+    (f"{layout}_mep{variant}", layout, 10_000_000)
+    for layout in ("tto", "too")
+    for variant in (1, 2, 3, 4)
+]
+
+
 @pytest.fixture(scope="module")
 def primary_policy() -> Iterator[HSPPolicy]:
-    policy = load_policy("tto_sp_seed4")
+    policy = load_policy("tto_mep1")
     assert isinstance(policy, HSPPolicy)
     yield policy
 
 
 @pytest.mark.parametrize(
     ("checkpoint_id", "layout_name", "step"),
-    [
-        ("tto_sp_seed4", "tto", 10_000_000),
-        ("tto_sp_seed5", "tto", 10_000_000),
-        ("ttt_adaptive_seed1", "ttt", 50_000_000),
-        ("ttt_adaptive_seed2", "ttt", 50_000_000),
-    ],
+    _MEP_CHECKPOINT_PARAMS,
 )
 def test_requested_policy_returns_valid_action(
     checkpoint_id: str,
@@ -60,28 +62,15 @@ def test_hsp_policy_is_deterministic(primary_policy: HSPPolicy) -> None:
 
 
 def test_requested_checkpoint_paths_are_exact() -> None:
-    expected_actor_paths = {
-        "tto_sp_seed4": (
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed4/"
-            "models/actor_periodic_10000000.pt"
-        ),
-        "tto_sp_seed5": (
-            "results/Overcooked/tto/shared/rmappo/agent_pool_sp/seed5/"
-            "models/actor_periodic_10000000.pt"
-        ),
-        "ttt_adaptive_seed1": (
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed1/"
-            "models/hsp_adaptive/actor_periodic_50000000.pt"
-        ),
-        "ttt_adaptive_seed2": (
-            "results/Overcooked/ttt/shared/adaptive/hsp-S2-s12/seed2/"
-            "models/hsp_adaptive/actor_periodic_50000000.pt"
-        ),
-    }
-
-    for checkpoint_id, expected_suffix in expected_actor_paths.items():
+    for checkpoint_id, layout, _ in _MEP_CHECKPOINT_PARAMS:
+        variant = checkpoint_id.rsplit("mep", 1)[-1]
+        expected_suffix = (
+            f"results/Overcooked/{layout}/shared/mep/mep-S1-s5/seed1/"
+            f"models/mep{variant}/actor_periodic_10000000.pt"
+        )
         paths = _resolve_checkpoint_paths(checkpoint_id)
         assert str(paths.actor_path).endswith(expected_suffix)
+        assert paths.critic_path is None
 
 
 def test_engine_requires_policy_for_implicit_ai_action() -> None:

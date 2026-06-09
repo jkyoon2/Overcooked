@@ -16,20 +16,20 @@ from backend.data.schema import (
     PhaseChangeMessage,
     PhaseChangePayload,
     PhaseReadyMessage,
-    PhaseThreeCompleteMessage,
-    PhaseThreeCompletePayload,
-    PhaseThreeReplayTrial,
-    PhaseThreeStartMessage,
-    PhaseThreeStartPayload,
+    PhaseTwoCompleteMessage,
+    PhaseTwoCompletePayload,
+    PhaseTwoReplayTrial,
+    PhaseTwoStartMessage,
+    PhaseTwoStartPayload,
     RatingAckMessage,
     RatingAckPayload,
     StartSessionMessage,
-    SubmitPhaseThreeMessage,
+    SubmitPhaseTwoMessage,
     SubmitRatingMessage,
     TrialStartMessage,
     TrialStartPayload,
 )
-from backend.data.phase3_store import save_phase_three_record
+from backend.data.phase2_store import save_phase_two_record
 from backend.game.ai_loader import checkpoint_layout
 from backend.game.engine import ACTION_MAP, OvercookedEngine
 from backend.trial.condition import TrialCondition
@@ -181,7 +181,7 @@ async def websocket_handler(websocket: WebSocket) -> None:
                 payload = data.get("payload", {})
                 ai_checkpoint_id = payload.get(
                     "ai_checkpoint",
-                    "tto_sp_seed4",
+                    "tto_mep1",
                 )
                 layout_name = (
                     payload.get("layout")
@@ -267,20 +267,20 @@ async def websocket_handler(websocket: WebSocket) -> None:
                     _phase_change_message(TrialPhase.BREAK).model_dump()
                 )
 
-            elif msg_type == "submit_phase3":
-                parsed = SubmitPhaseThreeMessage.model_validate(data)
+            elif msg_type == "submit_phase2":
+                parsed = SubmitPhaseTwoMessage.model_validate(data)
                 if conn.session is None or not conn.session.is_complete():
                     continue
-                _validate_phase_three_selections(conn, parsed)
+                _validate_phase_two_selections(conn, parsed)
                 replay_trials = _replay_trial_records(conn)
-                save_phase_three_record(
+                save_phase_two_record(
                     session_id=conn.session.session_id,
                     replay_trials=replay_trials,
                     selections=parsed.payload.trials,
                 )
-                complete = PhaseThreeCompleteMessage(
-                    type="phase3_complete",
-                    payload=PhaseThreeCompletePayload(
+                complete = PhaseTwoCompleteMessage(
+                    type="phase2_complete",
+                    payload=PhaseTwoCompletePayload(
                         session_id=conn.session.session_id,
                         saved=True,
                     ),
@@ -351,15 +351,15 @@ async def _complete_break_or_session(websocket: WebSocket, conn: ConnectionState
         await websocket.send_json(_trial_start_message(conn.session).model_dump())
         return
 
-    phase_three = PhaseThreeStartMessage(
-        type="phase3_start",
-        payload=PhaseThreeStartPayload(
+    phase_two = PhaseTwoStartMessage(
+        type="phase2_start",
+        payload=PhaseTwoStartPayload(
             session_id=conn.session.session_id,
             frame_duration_ms=100,
             player_hat=PLAYER_HAT,
             ai_hat=AI_HAT,
             trials=[
-                PhaseThreeReplayTrial(
+                PhaseTwoReplayTrial(
                     trial_id=trial["trial_id"],
                     frames=trial["frames"],
                 )
@@ -367,7 +367,7 @@ async def _complete_break_or_session(websocket: WebSocket, conn: ConnectionState
             ],
         ),
     )
-    await websocket.send_json(phase_three.model_dump())
+    await websocket.send_json(phase_two.model_dump())
 
 
 def _replay_trial_records(conn: ConnectionState) -> List[Dict[str, Any]]:
@@ -381,9 +381,9 @@ def _replay_trial_records(conn: ConnectionState) -> List[Dict[str, Any]]:
     ]
 
 
-def _validate_phase_three_selections(
+def _validate_phase_two_selections(
     conn: ConnectionState,
-    message: SubmitPhaseThreeMessage,
+    message: SubmitPhaseTwoMessage,
 ) -> None:
     assert conn.session is not None
     expected_trial_ids = set(range(1, conn.session.total_trials + 1))
@@ -393,7 +393,7 @@ def _validate_phase_three_selections(
         or submitted_trial_ids != expected_trial_ids
     ):
         raise ValueError(
-            "Phase 3 selections must include every Phase 2 trial exactly once"
+            "Phase 2 selections must include every Phase 1 trial exactly once"
         )
 
     for trial in message.payload.trials:

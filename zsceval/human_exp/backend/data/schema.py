@@ -173,60 +173,61 @@ class SessionCompleteMessage(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Phase 3: trajectory replay and misalignment segment annotation
+# Phase 2 (replay): trajectory replay and misalignment segment annotation.
+# This phase runs once at the end of a session, after all Phase 1 trials.
 # ---------------------------------------------------------------------------
 
 
-class PhaseThreeReplayTrial(BaseModel):
+class PhaseTwoReplayTrial(BaseModel):
     trial_id: int
     frames: List[GameState]
 
 
-class PhaseThreeStartPayload(BaseModel):
+class PhaseTwoStartPayload(BaseModel):
     session_id: str
     frame_duration_ms: int
     player_hat: str
     ai_hat: str
-    trials: List[PhaseThreeReplayTrial]
+    trials: List[PhaseTwoReplayTrial]
 
 
-class PhaseThreeStartMessage(BaseModel):
-    type: Literal["phase3_start"]
-    payload: PhaseThreeStartPayload
+class PhaseTwoStartMessage(BaseModel):
+    type: Literal["phase2_start"]
+    payload: PhaseTwoStartPayload
 
 
-class PhaseThreeSegment(BaseModel):
+class PhaseTwoSegment(BaseModel):
     segment_id: str
     start_frame: int = Field(ge=0)
     end_frame: int = Field(ge=0)
     created_at_ms: int
 
     @model_validator(mode="after")
-    def validate_frame_order(self) -> "PhaseThreeSegment":
+    def validate_frame_order(self) -> "PhaseTwoSegment":
         if self.start_frame > self.end_frame:
             raise ValueError("start_frame must be less than or equal to end_frame")
         return self
 
 
-class PhaseThreeTrialSelection(BaseModel):
+class PhaseTwoTrialSelection(BaseModel):
     trial_id: int
-    segments: List[PhaseThreeSegment]
+    segments: List[PhaseTwoSegment]
 
 
-class SubmitPhaseThreePayload(BaseModel):
-    trials: List[PhaseThreeTrialSelection]
+class SubmitPhaseTwoPayload(BaseModel):
+    trials: List[PhaseTwoTrialSelection]
 
 
-class SubmitPhaseThreeMessage(BaseModel):
-    type: Literal["submit_phase3"]
-    payload: SubmitPhaseThreePayload
+class SubmitPhaseTwoMessage(BaseModel):
+    type: Literal["submit_phase2"]
+    payload: SubmitPhaseTwoPayload
 
 
-class PhaseThreeCompletePayload(BaseModel):
+class PhaseTwoCompletePayload(BaseModel):
     session_id: str
     saved: bool
 
 
-class PhaseThreeCompleteMessage(BaseModel):
-    type: Literal["phase3_complete"]
-    payload: PhaseThreeCompletePayload
+class PhaseTwoCompleteMessage(BaseModel):
+    type: Literal["phase2_complete"]
+    payload: PhaseTwoCompletePayload

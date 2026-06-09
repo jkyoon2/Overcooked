@@ -44,7 +44,7 @@ export default function BreakScreen({
           textTransform: 'uppercase',
         }}
       >
-        Phase 2, Trial {completedTrial} complete
+        Phase 1, Trial {completedTrial} complete
       </span>
       <h1 style={{ margin: 0, fontSize: '2.4rem' }}>Take a short break</h1>
       <p style={{ margin: 0, color: '#475569', fontSize: '1.05rem' }}>

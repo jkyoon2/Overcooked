@@ -8,7 +8,12 @@ from starlette.testclient import TestClient, WebSocketTestSession
 from backend.main import app
 from backend.trial.condition import TrialCondition
 from backend.trial.manager import TrialManager, TrialPhase
-from backend.trial.session import SessionManager
+from backend.trial.session import (
+    MEP_VARIANTS,
+    TRIALS_PER_CELL,
+    SessionManager,
+    generate_trials,
+)
 
 
 def test_trial_condition_alignment() -> None:
@@ -73,33 +78,43 @@ def test_manipulation_check_scale_definition() -> None:
     assert misaligned_result.excluded is True
 
 
-def test_session_manager_phase_two_sequence() -> None:
+def test_generate_trials_is_deterministic_and_balanced() -> None:
+    trials_a = generate_trials("TEST_S01")
+    trials_b = generate_trials("TEST_S01")
+
+    assert trials_a == trials_b, "same session_id must produce same trial order"
+    assert len(trials_a) == 4 * TRIALS_PER_CELL  # 2x2 cells
+
+    expected_cells = {
+        ("tomato", "tomato"),
+        ("tomato", "onion"),
+        ("onion", "tomato"),
+        ("onion", "onion"),
+    }
+    cell_counts = {cell: 0 for cell in expected_cells}
+    for trial in trials_a:
+        cell_counts[(trial.ai_checkpoint, trial.player_intent)] += 1
+    assert all(count == TRIALS_PER_CELL for count in cell_counts.values())
+
+    for trial in trials_a:
+        layout_prefix = "tto" if trial.ai_checkpoint == "tomato" else "too"
+        assert trial.model_checkpoint.startswith(f"{layout_prefix}_mep")
+        variant = int(trial.model_checkpoint.rsplit("mep", 1)[-1])
+        assert variant in MEP_VARIANTS
+
+
+def test_generate_trials_differs_between_sessions() -> None:
+    a = generate_trials("TEST_S01")
+    b = generate_trials("TEST_S02")
+    assert a != b, "different session_id should produce different trial orders"
+
+
+def test_session_manager_phase_one_sequence() -> None:
     session = SessionManager("TEST_S01")
 
-    assert session.total_trials == 4
+    assert session.total_trials == 8
     assert not session.is_complete()
-    assert session.trials == [
-        TrialCondition(
-            ai_checkpoint="tomato",
-            player_intent="tomato",
-            model_checkpoint="tto_sp_seed4",
-        ),
-        TrialCondition(
-            ai_checkpoint="onion",
-            player_intent="tomato",
-            model_checkpoint="tto_sp_seed5",
-        ),
-        TrialCondition(
-            ai_checkpoint="tomato",
-            player_intent="onion",
-            model_checkpoint="ttt_adaptive_seed1",
-        ),
-        TrialCondition(
-            ai_checkpoint="onion",
-            player_intent="onion",
-            model_checkpoint="ttt_adaptive_seed2",
-        ),
-    ]
+    assert session.trials == generate_trials("TEST_S01")
 
     for expected_trial_id in range(1, session.total_trials + 1):
         assert session.current_trial_id() == expected_trial_id
@@ -112,7 +127,7 @@ def test_session_manager_phase_two_sequence() -> None:
 def test_ws_session_flow(monkeypatch: Any) -> None:
     saved: Dict[str, Any] = {}
 
-    def fake_save_phase_three_record(
+    def fake_save_phase_two_record(
         session_id: str,
         replay_trials: Any,
         selections: Any,
@@ -120,19 +135,30 @@ def test_ws_session_flow(monkeypatch: Any) -> None:
         saved["session_id"] = session_id
         saved["replay_trials"] = replay_trials
         saved["selections"] = selections
-        return Path("/tmp/phase3-test.json")
+        return Path("/tmp/phase2-test.json")
 
     monkeypatch.setattr(
-        "backend.api.websocket.save_phase_three_record",
-        fake_save_phase_three_record,
+        "backend.api.websocket.save_phase_two_record",
+        fake_save_phase_two_record,
     )
+
+    expected_total_trials = SessionManager("TEST_S01").total_trials
+    expected_alignment_by_trial_id: Dict[int, str] = {
+        trial_id: (
+            "yes_clearly"
+            if SessionManager("TEST_S01").trials[trial_id - 1].is_aligned
+            else "no_clearly"
+        )
+        for trial_id in range(1, expected_total_trials + 1)
+    }
+
     client = TestClient(app)
     with client.websocket_connect("/ws") as ws:
         ws.send_json({"type": "start_session", "payload": {"session_id": "TEST_S01"}})
-        for trial_id in range(1, 5):
+        for trial_id in range(1, expected_total_trials + 1):
             trial_start = _receive_until(ws, "trial_start")
             assert trial_start["payload"]["trial_id"] == trial_id
-            assert trial_start["payload"]["total_trials"] == 4
+            assert trial_start["payload"]["total_trials"] == expected_total_trials
             assert trial_start["payload"]["phase"] == "instruction"
             assert trial_start["payload"]["player_hat"] == "blue"
             assert trial_start["payload"]["ai_hat"] == "red"
@@ -145,15 +171,12 @@ def test_ws_session_flow(monkeypatch: Any) -> None:
             rating_change = _receive_until(ws, "phase_change", phase="rating")
             assert rating_change["payload"]["duration_ms"] == 20_000
 
-            intent_alignment = (
-                "yes_clearly" if trial_id in {1, 4} else "no_clearly"
-            )
             ws.send_json(
                 {
                     "type": "submit_rating",
                     "payload": {
                         "quality": 4,
-                        "intent_alignment": intent_alignment,
+                        "intent_alignment": expected_alignment_by_trial_id[trial_id],
                     },
                 }
             )
@@ -165,23 +188,20 @@ def test_ws_session_flow(monkeypatch: Any) -> None:
             assert break_change["payload"]["duration_ms"] == 5_000
             ws.send_json({"type": "phase_ready", "payload": {}})
 
-        phase_three = _receive_until(ws, "phase3_start")
-        assert phase_three["payload"]["session_id"] == "TEST_S01"
-        assert phase_three["payload"]["frame_duration_ms"] == 100
-        assert [trial["trial_id"] for trial in phase_three["payload"]["trials"]] == [
-            1,
-            2,
-            3,
-            4,
-        ]
+        phase_two = _receive_until(ws, "phase2_start")
+        assert phase_two["payload"]["session_id"] == "TEST_S01"
+        assert phase_two["payload"]["frame_duration_ms"] == 100
+        assert [trial["trial_id"] for trial in phase_two["payload"]["trials"]] == list(
+            range(1, expected_total_trials + 1)
+        )
         assert all(
             len(trial["frames"]) >= 1
-            for trial in phase_three["payload"]["trials"]
+            for trial in phase_two["payload"]["trials"]
         )
 
         ws.send_json(
             {
-                "type": "submit_phase3",
+                "type": "submit_phase2",
                 "payload": {
                     "trials": [
                         {
@@ -195,20 +215,20 @@ def test_ws_session_flow(monkeypatch: Any) -> None:
                                 }
                             ],
                         }
-                        for trial_id in range(1, 5)
+                        for trial_id in range(1, expected_total_trials + 1)
                     ]
                 },
             }
         )
-        complete = _receive_until(ws, "phase3_complete")
+        complete = _receive_until(ws, "phase2_complete")
         assert complete["payload"] == {
             "session_id": "TEST_S01",
             "saved": True,
         }
 
     assert saved["session_id"] == "TEST_S01"
-    assert len(saved["replay_trials"]) == 4
-    assert len(saved["selections"]) == 4
+    assert len(saved["replay_trials"]) == expected_total_trials
+    assert len(saved["selections"]) == expected_total_trials
 
 
 def _receive_until(

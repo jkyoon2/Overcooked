@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 
-from backend.data.phase3_store import save_phase_three_record
-from backend.data.schema import PhaseThreeSegment, PhaseThreeTrialSelection
+from backend.data.phase2_store import save_phase_two_record
+from backend.data.schema import PhaseTwoSegment, PhaseTwoTrialSelection
 
 
-def test_save_phase_three_record_includes_trajectory_and_segments(tmp_path) -> None:
+def test_save_phase_two_record_includes_trajectory_and_segments(tmp_path) -> None:
     replay_trials = [
         {
             "trial_id": 1,
@@ -18,10 +18,10 @@ def test_save_phase_three_record_includes_trajectory_and_segments(tmp_path) -> N
         }
     ]
     selections = [
-        PhaseThreeTrialSelection(
+        PhaseTwoTrialSelection(
             trial_id=1,
             segments=[
-                PhaseThreeSegment(
+                PhaseTwoSegment(
                     segment_id="1-segment-1",
                     start_frame=1,
                     end_frame=2,
@@ -31,7 +31,7 @@ def test_save_phase_three_record_includes_trajectory_and_segments(tmp_path) -> N
         )
     ]
 
-    output_path = save_phase_three_record(
+    output_path = save_phase_two_record(
         session_id="../unsafe session",
         replay_trials=replay_trials,
         selections=selections,
@@ -42,6 +42,7 @@ def test_save_phase_three_record_includes_trajectory_and_segments(tmp_path) -> N
     assert output_path.name == "unsafe_session.json"
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["session_id"] == "../unsafe session"
+    assert payload["phase"] == 2
     assert payload["trials"][0]["frames"] == replay_trials[0]["frames"]
     assert payload["trials"][0]["misalignment_segments"] == [
         {

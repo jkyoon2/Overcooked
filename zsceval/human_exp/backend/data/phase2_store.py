@@ -6,17 +6,17 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from backend.data.schema import PhaseThreeTrialSelection
+from backend.data.schema import PhaseTwoTrialSelection
 
 
-_DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[2] / "data" / "logs" / "phase3"
+_DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[2] / "data" / "logs" / "phase2"
 _UNSAFE_FILENAME = re.compile(r"[^A-Za-z0-9_.-]+")
 
 
-def save_phase_three_record(
+def save_phase_two_record(
     session_id: str,
     replay_trials: List[Dict[str, Any]],
-    selections: List[PhaseThreeTrialSelection],
+    selections: List[PhaseTwoTrialSelection],
     output_dir: Optional[Path] = None,
 ) -> Path:
     destination = output_dir or _DEFAULT_OUTPUT_DIR
@@ -59,7 +59,7 @@ def save_phase_three_record(
     payload = {
         "session_id": session_id,
         "saved_at_ms": int(time.time() * 1000),
-        "phase": 3,
+        "phase": 2,
         "trials": trials,
     }
     temporary_path.write_text(
