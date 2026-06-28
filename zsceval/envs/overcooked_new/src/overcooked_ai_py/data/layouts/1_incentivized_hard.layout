@@ -2,7 +2,7 @@
     "grid":  """XXXXXXXXXXXXX
                 O 1       2 X
                 X     X     X
-                X     S     P
+                T     S     P
                 X     X     X
                 D           X
                 XXXXXXXXXXXXX""",

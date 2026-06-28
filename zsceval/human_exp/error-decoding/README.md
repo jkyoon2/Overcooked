@@ -53,26 +53,64 @@ cd zsceval/human_exp/frontend && npm install
 
 ---
 
-## Run Backend
+## Run (one shot)
 
 ```bash
-conda activate neurocontroller
-cd zsceval/human_exp
-uvicorn backend.main:app --reload
-# Backend runs on http://localhost:8000
+bash zsceval/human_exp/run-dev.sh
+# → backend  http://localhost:8001  (uvicorn --reload)
+# → frontend http://localhost:5173  (Vite dev server)
+# Ctrl+C tears both down together.
+```
+
+The script activates the `neurocontroller` conda env, starts uvicorn in the background, waits for `/health`, then runs `npm run dev` in the foreground.  `VITE_BACKEND_PORT` is passed to Vite automatically so the frontend talks to the right port.
+
+Override ports via env vars:
+
+```bash
+BACKEND_PORT=8002 FRONTEND_PORT=5174 bash zsceval/human_exp/run-dev.sh
 ```
 
 ---
 
-## Run Frontend
+## Run backend or frontend on their own (optional)
 
 ```bash
+# Backend only
+conda activate neurocontroller
+cd zsceval/human_exp
+uvicorn backend.main:app --reload --port 8001
+
+# Frontend only — point Vite at whatever backend port you used
 cd zsceval/human_exp/frontend
-npm run dev
-# Dev server runs on http://localhost:5173
+cp .env.example .env       # one-time; gitignored
+VITE_BACKEND_PORT=8001 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173). Click **Send hello** to verify WebSocket round-trip.
+---
+
+## Open in browser
+
+1. Open [http://localhost:5173](http://localhost:5173) in Chrome (or any modern browser).
+2. The IdleScreen appears with `Press ENTER to start`.
+3. Press **Enter** (or click *Start session*) to begin Phase 1 (8 trials).
+4. Phase 1 cycle per trial: Instruction (10s) → Play (≤75s) → Rating (20s) → Break (5s).
+5. After the 8th trial, Phase 2 (replay + misalignment annotation) starts automatically.
+6. Phase 2: replay each trial, drag across the timeline to mark misaligned intervals.
+   Drag the small handles at either edge of a saved segment to adjust its endpoints.
+   Click *Finish Phase 2* to save annotations under `data/logs/phase2/{session_id}.json`.
+
+### Troubleshooting
+
+- **`Connection lost. Retrying automatically…`** — the frontend cannot reach the backend WebSocket. Check what is on the backend port:
+  ```bash
+  lsof -nP -iTCP:8001 -sTCP:LISTEN
+  # or
+  ss -tlnp | grep 8001
+  ```
+  If a non-uvicorn process owns the port (e.g. `python3 -m http.server 8000 --directory analysis/dashboard` already squats on 8000 on this machine), pick another port: `BACKEND_PORT=8002 bash run-dev.sh`.
+- **`run-dev.sh` exits with `port … is already in use`** — same fix: rerun with a different `BACKEND_PORT` / `FRONTEND_PORT`.
+- **Backend reload restarts session** — uvicorn `--reload` drops in-memory state. Refresh the browser tab to reset the IdleScreen.
+- **Checkpoint load error** — confirm MEP weights exist at `results/Overcooked/{tto,too}/shared/mep/mep-S1-s5/seed1/models/mep{1..4}/actor_periodic_10000000.pt`.
 
 ---
 

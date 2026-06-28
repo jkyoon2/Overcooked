@@ -21,6 +21,9 @@ Options:
   --skip-layouts <csv>           Explicitly skip layouts.
   --gpus <csv|auto>              GPU list, e.g. 0,1. Default: auto
   --parallel <n>                 Max concurrent layout pipelines. Default: number of selected GPUs
+  --shard-within-layout          Use all --gpus inside ONE layout: shard bias_train and hsp_train
+                                 seed ranges across the listed GPUs (parallel seed-level training).
+                                 Forces --parallel 1. MEP S1 stays on the first GPU.
   --skip-active-layouts          Skip layouts with active train processes. Default: enabled
   --no-skip-active-layouts       Disable active-layout skipping
   --free-gpu-mem-max-mb <mb>     Max memory used for an auto-selected idle GPU. Default: 512
@@ -122,6 +125,7 @@ layouts_csv="all"
 skip_layouts_csv=""
 gpus_csv="auto"
 parallel=0
+shard_within_layout=0
 skip_active_layouts=1
 free_gpu_mem_max_mb=512
 
@@ -167,6 +171,10 @@ while [[ $# -gt 0 ]]; do
         --parallel)
             parallel="${2:-0}"
             shift 2
+            ;;
+        --shard-within-layout)
+            shard_within_layout=1
+            shift
             ;;
         --skip-active-layouts)
             skip_active_layouts=1
@@ -300,7 +308,7 @@ if (( bias_seed_cap > 0 && bias_seed_cap - bias_seed_begin + 1 < hsp_k )); then
     exit 1
 fi
 
-all_layouts=(ttt tto too ooo 1_incentivized_hard 1_forced_hard 2_incentivized_hard 2_forced_hard)
+all_layouts=(ttt tto too ooo 1_incentivized_hard 1_forced_hard 2_incentivized_hard 2_forced_hard bitl)
 if [[ "${layouts_csv}" == "all" ]]; then
     layouts=("${all_layouts[@]}")
 else
@@ -378,10 +386,17 @@ if (( ${#gpus[@]} == 0 )); then
     exit 1
 fi
 
-if (( parallel <= 0 || parallel > ${#gpus[@]} )); then
-    parallel="${#gpus[@]}"
+if (( shard_within_layout )); then
+    parallel=1
+    slot_gpus=("${gpus[0]}")
+    shard_gpus_csv="$(IFS=','; echo "${gpus[*]}")"
+else
+    if (( parallel <= 0 || parallel > ${#gpus[@]} )); then
+        parallel="${#gpus[@]}"
+    fi
+    slot_gpus=("${gpus[@]:0:${parallel}}")
+    shard_gpus_csv=""
 fi
-slot_gpus=("${gpus[@]:0:${parallel}}")
 
 mkdir -p "${log_root}"
 mkdir -p "${log_root}/locks"
@@ -418,6 +433,116 @@ run_layout_pipeline() {
             "$@"
         }
 
+        local_shard_gpus=()
+        if (( shard_within_layout )) && [[ -n "${shard_gpus_csv}" ]]; then
+            IFS=',' read -r -a local_shard_gpus <<<"${shard_gpus_csv}"
+        fi
+
+        run_train_bias_agents_sharded() {
+            local seed_begin="$1"
+            local seed_end="$2"
+            local n_gpus="${#local_shard_gpus[@]}"
+            if (( n_gpus <= 1 )); then
+                run_cmd bash "${OVERCOOKED_DIR}/shell/train_bias_agents.sh" \
+                    "${layout}" "${seed_begin}" "${seed_end}"
+                return
+            fi
+            local total=$((seed_end - seed_begin + 1))
+            if (( total <= 1 )); then
+                run_cmd bash "${OVERCOOKED_DIR}/shell/train_bias_agents.sh" \
+                    "${layout}" "${seed_begin}" "${seed_end}"
+                return
+            fi
+            local per=$((total / n_gpus))
+            local rem=$((total % n_gpus))
+            local cur="${seed_begin}"
+            local pids=()
+            local i chunk s_begin s_end shard_gpu
+            for (( i=0; i<n_gpus; i++ )); do
+                chunk=$(( per + (i < rem ? 1 : 0) ))
+                if (( chunk == 0 )); then
+                    continue
+                fi
+                s_begin="${cur}"
+                s_end=$(( cur + chunk - 1 ))
+                cur=$(( s_end + 1 ))
+                shard_gpu="${local_shard_gpus[$i]}"
+                echo "[$(date '+%F %T')] [${layout}] [shard gpu${shard_gpu}] bias seeds ${s_begin}..${s_end}"
+                if (( dry_run )); then
+                    echo "[dry-run] CUDA_VISIBLE_DEVICES=${shard_gpu} bash ${OVERCOOKED_DIR}/shell/train_bias_agents.sh ${layout} ${s_begin} ${s_end}"
+                    continue
+                fi
+                CUDA_VISIBLE_DEVICES="${shard_gpu}" \
+                    bash "${OVERCOOKED_DIR}/shell/train_bias_agents.sh" \
+                    "${layout}" "${s_begin}" "${s_end}" &
+                pids+=($!)
+            done
+            local failed=0
+            local pid
+            for pid in "${pids[@]}"; do
+                if ! wait "${pid}"; then
+                    failed=1
+                fi
+            done
+            if (( failed )); then
+                echo "[ERROR] [${layout}] sharded bias training had failures" >&2
+                return 1
+            fi
+        }
+
+        run_train_hsp_stage_2_sharded() {
+            local pop_size="$1"
+            local seed_begin="$2"
+            local seed_end="$3"
+            local n_gpus="${#local_shard_gpus[@]}"
+            if (( n_gpus <= 1 )); then
+                run_cmd bash "${OVERCOOKED_DIR}/shell/train_hsp_stage_2.sh" \
+                    "${layout}" "${pop_size}" "${seed_begin}" "${seed_end}"
+                return
+            fi
+            local total=$((seed_end - seed_begin + 1))
+            if (( total <= 1 )); then
+                run_cmd bash "${OVERCOOKED_DIR}/shell/train_hsp_stage_2.sh" \
+                    "${layout}" "${pop_size}" "${seed_begin}" "${seed_end}"
+                return
+            fi
+            local per=$((total / n_gpus))
+            local rem=$((total % n_gpus))
+            local cur="${seed_begin}"
+            local pids=()
+            local i chunk s_begin s_end shard_gpu
+            for (( i=0; i<n_gpus; i++ )); do
+                chunk=$(( per + (i < rem ? 1 : 0) ))
+                if (( chunk == 0 )); then
+                    continue
+                fi
+                s_begin="${cur}"
+                s_end=$(( cur + chunk - 1 ))
+                cur=$(( s_end + 1 ))
+                shard_gpu="${local_shard_gpus[$i]}"
+                echo "[$(date '+%F %T')] [${layout}] [shard gpu${shard_gpu}] hsp seeds ${s_begin}..${s_end}"
+                if (( dry_run )); then
+                    echo "[dry-run] CUDA_VISIBLE_DEVICES=${shard_gpu} bash ${OVERCOOKED_DIR}/shell/train_hsp_stage_2.sh ${layout} ${pop_size} ${s_begin} ${s_end}"
+                    continue
+                fi
+                CUDA_VISIBLE_DEVICES="${shard_gpu}" \
+                    bash "${OVERCOOKED_DIR}/shell/train_hsp_stage_2.sh" \
+                    "${layout}" "${pop_size}" "${s_begin}" "${s_end}" &
+                pids+=($!)
+            done
+            local failed=0
+            local pid
+            for pid in "${pids[@]}"; do
+                if ! wait "${pid}"; then
+                    failed=1
+                fi
+            done
+            if (( failed )); then
+                echo "[ERROR] [${layout}] sharded hsp training had failures" >&2
+                return 1
+            fi
+        }
+
         count_usable_bias_agents() {
             if (( dry_run )); then
                 echo "${hsp_k}"
@@ -452,8 +577,7 @@ run_layout_pipeline() {
                 if bias_seed_has_training_artifacts "${seed}"; then
                     if [[ -n "${missing_begin}" ]]; then
                         echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] bias seeds ${missing_begin}..${prev_seed} missing locally; training them now"
-                        run_cmd bash "${OVERCOOKED_DIR}/shell/train_bias_agents.sh" \
-                            "${layout}" "${missing_begin}" "${prev_seed}"
+                        run_train_bias_agents_sharded "${missing_begin}" "${prev_seed}"
                         missing_begin=""
                     fi
                 else
@@ -466,8 +590,7 @@ run_layout_pipeline() {
 
             if [[ -n "${missing_begin}" ]]; then
                 echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] bias seeds ${missing_begin}..${range_end} missing locally; training them now"
-                run_cmd bash "${OVERCOOKED_DIR}/shell/train_bias_agents.sh" \
-                    "${layout}" "${missing_begin}" "${range_end}"
+                run_train_bias_agents_sharded "${missing_begin}" "${range_end}"
             fi
         }
 
@@ -577,8 +700,7 @@ run_layout_pipeline() {
                 fi
 
                 echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] extending bias training to seeds ${next_begin}..${next_end} because usable bias agents=${usable_count} < hsp_k=${hsp_k}"
-                run_cmd bash "${OVERCOOKED_DIR}/shell/train_bias_agents.sh" \
-                    "${layout}" "${next_begin}" "${next_end}"
+                run_train_bias_agents_sharded "${next_begin}" "${next_end}"
                 current_bias_seed_end="${next_end}"
 
                 run_cmd python "${SCRIPTS_DIR}/extract_models/extract_bias_agents_models.py" \
@@ -666,8 +788,7 @@ run_layout_pipeline() {
         fi
 
         if should_run_stage hsp_train; then
-            run_cmd bash "${OVERCOOKED_DIR}/shell/train_hsp_stage_2.sh" \
-                "${layout}" "${hsp_population_size}" "${hsp_seed_begin}" "${hsp_seed_end}"
+            run_train_hsp_stage_2_sharded "${hsp_population_size}" "${hsp_seed_begin}" "${hsp_seed_end}"
         fi
 
         echo "[$(date '+%F %T')] [${layout}] [gpu${gpu}] pipeline done"
@@ -676,6 +797,9 @@ run_layout_pipeline() {
 
 echo "[INFO] Layouts to run: ${layouts[*]}"
 echo "[INFO] GPU slots: ${slot_gpus[*]}"
+if (( shard_within_layout )); then
+    echo "[INFO] Shard within layout: enabled (bias_train + hsp_train spread across GPUs ${shard_gpus_csv})"
+fi
 echo "[INFO] Stage window: ${from_stage} -> ${to_stage}"
 echo "[INFO] Logs: ${log_root}"
 if (( dry_run )); then

@@ -49,8 +49,6 @@ policy_mode="shared"
 agent_policy_names="ppo ppo"
 n_rollout_threads=50
 n_eval_rollout_threads=10
-n_render_rollout_threads=1
-render_episodes=1
 wandb_name="${WANDB_NAME:-juliejung98}"
 log_dir="${OVERCOOKED_DIR}/log"
 mkdir -p "${log_dir}"
@@ -206,6 +204,5 @@ do
     --cnn_layers_params "32,3,1,1 64,3,1,1 32,3,1,1" --use_recurrent_policy \
     --use_proper_time_limits \
     --save_interval 25 --log_interval 10 --use_eval --eval_interval 20 --n_eval_rollout_threads "${n_eval_rollout_threads}" \
-    --use_render --save_gifs --n_render_rollout_threads "${n_render_rollout_threads}" --render_episodes "${render_episodes}" \
     --wandb_name "${wandb_name}" 2>&1 | tee "${run_log}"
 done

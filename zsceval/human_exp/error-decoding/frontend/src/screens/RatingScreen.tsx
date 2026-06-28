@@ -97,49 +97,31 @@ export default function RatingScreen({
       <section
         aria-label={`Trial ${trialId} rating`}
         style={{
+          position: 'relative',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1.5rem',
+          gap: '1.25rem',
           width: 'min(46rem, 100%)',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-          <div>
-            <p
-              style={{
-                margin: '0 0 0.55rem',
-                color: '#2563eb',
-                fontSize: '0.9rem',
-                fontWeight: 800,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-              }}
-            >
-              Phase 1, Trial {trialId}
-            </p>
-            <h1 style={{ margin: 0, fontSize: '2.3rem', lineHeight: 1.05, letterSpacing: 0 }}>
-              Trial {trialId} Rating
-            </h1>
-            <p style={{ margin: '0.5rem 0 0', color: '#475569' }}>
-              Please answer both questions.
-            </p>
-          </div>
-          <div
-            aria-live="polite"
-            style={{
-              alignSelf: 'flex-start',
-              minWidth: '5.5rem',
-              border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              padding: '0.65rem 0.85rem',
-              background: '#ffffff',
-              textAlign: 'center',
-              fontVariantNumeric: 'tabular-nums',
-              fontWeight: 700,
-            }}
-          >
-            {formatRemaining(remainingMs)}
-          </div>
+        <div
+          aria-live="polite"
+          style={{
+            alignSelf: 'flex-end',
+            minWidth: '4.5rem',
+            border: '1px solid #e2e8f0',
+            borderRadius: '999px',
+            padding: '0.4rem 0.85rem',
+            background: '#ffffff',
+            textAlign: 'center',
+            fontVariantNumeric: 'tabular-nums',
+            fontWeight: 700,
+            fontSize: '0.9rem',
+            color: '#0f172a',
+            boxShadow: '0 6px 16px rgba(15, 23, 42, 0.05)',
+          }}
+        >
+          {formatRemaining(remainingMs)}
         </div>
 
         <RatingForm

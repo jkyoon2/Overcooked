@@ -40,8 +40,6 @@ agent_policy_names="ppo ppo"
 role_csv="individual,individual"
 train_batch=125
 eval_threads=$((population_size * 2))
-n_render_rollout_threads=1
-render_episodes=1
 wandb_name="${WANDB_NAME:-juliejung98}"
 
 policy_pool_root="${PROJECT_ROOT}/zsceval/scripts/policy_pool"
@@ -84,7 +82,6 @@ do
     --population_yaml_path "${population_yaml}" \
     --population_size "${population_size}" --adaptive_agent_name mep_adaptive \
     --save_interval 25 --log_interval 1 --use_eval --eval_interval 20 --n_eval_rollout_threads "${eval_threads}" --eval_episodes 10 \
-    --use_render --save_gifs --n_render_rollout_threads "${n_render_rollout_threads}" --render_episodes "${render_episodes}" \
     --use_proper_time_limits \
     --wandb_name "${wandb_name}" 2>&1 | tee "${run_log}"
 done

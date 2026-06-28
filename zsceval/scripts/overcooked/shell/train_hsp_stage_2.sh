@@ -74,8 +74,6 @@ results_root="${PROJECT_ROOT}/results"
 export POLICY_POOL="${policy_pool_root}"
 
 n_training_threads=100
-n_render_rollout_threads=1
-render_episodes=1
 wandb_name="${WANDB_NAME:-juliejung98}"
 log_dir="${OVERCOOKED_DIR}/log"
 mkdir -p "${log_dir}"
@@ -114,7 +112,6 @@ do
     --save_interval 25 --log_interval 1 --use_eval --eval_interval 20 --n_eval_rollout_threads "$((population_size * 2))" --eval_episodes 5 \
     --population_yaml_path "${yml_path}" \
     --population_size "${population_size}" --adaptive_agent_name hsp_adaptive --use_agent_policy_id \
-    --use_render --save_gifs --n_render_rollout_threads "${n_render_rollout_threads}" --render_episodes "${render_episodes}" \
     --use_proper_time_limits \
     --wandb_name "${wandb_name}" 2>&1 | tee "${run_log}"
 done

@@ -1,0 +1,43 @@
+{
+  "participant_id": "1",
+  "layout": "1_forced_easy",
+  "recipe": "TTT",
+  "recipe_ingredients": {
+    "tomato": 3,
+    "onion": 0
+  },
+  "horizon": 400,
+  "n_channels": 25,
+  "channel_names": [
+    "ego_loc",
+    "partner_loc",
+    "ego_orientation_0",
+    "ego_orientation_1",
+    "ego_orientation_2",
+    "ego_orientation_3",
+    "partner_orientation_0",
+    "partner_orientation_1",
+    "partner_orientation_2",
+    "partner_orientation_3",
+    "pot_loc",
+    "counter_loc",
+    "onion_disp_loc",
+    "tomato_disp_loc",
+    "dish_disp_loc",
+    "serve_loc",
+    "onions_in_pot",
+    "tomatoes_in_pot",
+    "onions_in_soup",
+    "tomatoes_in_soup",
+    "soup_cook_time_remaining",
+    "dishes",
+    "onions",
+    "tomatoes",
+    "urgency"
+  ],
+  "total_steps": 400,
+  "total_score": 0,
+  "duration_ms": 39988,
+  "recorded_at": "2026-06-28T16:01:58.579043+00:00",
+  "trajectory_file": "data/trajectories/1_1_forced_easy_TTT.npz"
+}
