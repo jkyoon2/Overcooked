@@ -1,0 +1,45 @@
+data:
+  n_obs: 2
+  horizon: 16
+  n_action_steps: 8
+  action_dim: 6
+  label_smoothing: 0.0
+  val_files_per_recipe: 1
+
+model:
+  obs_emb_dim: 64
+  goal_emb_dim: 64
+  down_dims: [256, 512, 1024]
+
+diffusion:
+  num_diffusion_steps: 100
+  beta_start: 0.0001
+  beta_end: 0.02
+  inference_steps: 100
+  smoke_inference_steps: 4
+  scheduler_method: ddim
+  eta: 0.0
+
+training:
+  batch_size: 64
+  epochs: 50
+  learning_rate: 0.0001
+  weight_decay: 0.0
+  p_uncond: 0.1
+  grad_clip_norm: 1.0
+  num_workers: 0
+  log_interval: 10
+  save_interval_epochs: 10
+  eval_max_batches: null
+  max_train_steps: null
+
+logging:
+  use_wandb: false
+  project: Overcooked-Diffusion
+  entity: null
+  name: null
+  tags: []
+
+paths:
+  output_root: results
+  experiment_name: diffusion_policy

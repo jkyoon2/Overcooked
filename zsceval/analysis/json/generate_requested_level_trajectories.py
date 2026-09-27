@@ -74,6 +74,13 @@ def build_parser() -> argparse.ArgumentParser:
         )
     )
     parser.add_argument("--layouts", nargs="+", default=list(LAYOUT_CONFIGS))
+    parser.add_argument(
+        "--seeds",
+        nargs="+",
+        type=int,
+        default=None,
+        help="Optional seed override applied to every selected layout.",
+    )
     parser.add_argument("--results_root", type=Path, default=None)
     parser.add_argument("--output_root", type=Path, default=None)
     parser.add_argument("--inventory_path", type=Path, default=None)
@@ -81,6 +88,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cpu")
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--min_age_seconds", type=float, default=60.0)
+    parser.add_argument(
+        "--old_dynamics",
+        action="store_true",
+        help=(
+            "Use old pot transition dynamics: adding the third ingredient starts "
+            "cooking automatically. Policy observation encoding is still aligned "
+            "with each checkpoint."
+        ),
+    )
     parser.add_argument("--dry_run", action="store_true")
     parser.add_argument(
         "--keep_out_of_scope",
@@ -110,19 +126,24 @@ def main() -> None:
     ).resolve()
 
     layouts = validate_layouts(args.layouts)
-    specs = discover_specs(results_root, layouts, args.min_age_seconds)
+    seed_override = None if args.seeds is None else set(args.seeds)
+    specs = discover_specs(results_root, layouts, args.min_age_seconds, seed_override)
     output_root.mkdir(parents=True, exist_ok=True)
     write_inventory(inventory_path, specs)
 
     existing_files = discover_existing_files(output_root, layouts)
-    planned_existing = summarize_existing(existing_files, keep_out_of_scope=args.keep_out_of_scope)
+    planned_existing = summarize_existing(
+        existing_files,
+        keep_out_of_scope=args.keep_out_of_scope,
+        seed_override=seed_override,
+    )
     pending_specs = specs
     if not args.overwrite:
         existing_keys = {
             existing.key
             for existing in existing_files
             if existing.layout in layouts
-            and existing.seed in LAYOUT_CONFIGS[existing.layout].seeds
+            and seed_is_target(existing.layout, existing.seed, seed_override)
         }
         pending_specs = [spec for spec in specs if spec.key not in existing_keys]
 
@@ -162,6 +183,7 @@ def main() -> None:
             output_root=output_root,
             layouts=layouts,
             keep_out_of_scope=args.keep_out_of_scope,
+            seed_override=seed_override,
             writer=writer,
             report_file=report_file,
         )
@@ -180,6 +202,7 @@ def main() -> None:
                     results_root=results_root,
                     output_root=output_root,
                     device=args.device,
+                    old_dynamics=args.old_dynamics,
                 )
                 writer.writerow(row)
                 report_file.flush()
@@ -194,6 +217,7 @@ def main() -> None:
                         results_root,
                         output_root,
                         args.device,
+                        args.old_dynamics,
                     )
                     for index, spec in enumerate(specs_to_generate, start=1)
                 ]
@@ -211,7 +235,12 @@ def validate_layouts(layouts: list[str]) -> list[str]:
     return layouts
 
 
-def discover_specs(results_root: Path, layouts: list[str], min_age_seconds: float) -> list[Spec]:
+def discover_specs(
+    results_root: Path,
+    layouts: list[str],
+    min_age_seconds: float,
+    seed_override: Optional[set[int]] = None,
+) -> list[Spec]:
     now = time.time()
     specs: list[Spec] = []
     for layout in layouts:
@@ -219,7 +248,8 @@ def discover_specs(results_root: Path, layouts: list[str], min_age_seconds: floa
         exp_dir = results_root / "Overcooked" / layout / "shared" / "rmappo" / "sp"
         if not exp_dir.exists():
             continue
-        for seed in config.seeds:
+        seeds = sorted(seed_override) if seed_override is not None else config.seeds
+        for seed in seeds:
             models_dir = exp_dir / f"seed{seed}" / "models"
             if not models_dir.exists():
                 continue
@@ -279,11 +309,15 @@ def discover_existing_files(output_root: Path, layouts: list[str]) -> list[Exist
     return existing
 
 
-def summarize_existing(existing_files: list[ExistingFile], keep_out_of_scope: bool) -> dict[str, int]:
+def summarize_existing(
+    existing_files: list[ExistingFile],
+    keep_out_of_scope: bool,
+    seed_override: Optional[set[int]] = None,
+) -> dict[str, int]:
     target_keys = set()
     out_of_scope = 0
     for existing in existing_files:
-        if existing.seed in LAYOUT_CONFIGS[existing.layout].seeds:
+        if seed_is_target(existing.layout, existing.seed, seed_override):
             target_keys.add(existing.key)
         elif not keep_out_of_scope:
             out_of_scope += 1
@@ -294,14 +328,14 @@ def normalize_existing_files(
     output_root: Path,
     layouts: list[str],
     keep_out_of_scope: bool,
+    seed_override: Optional[set[int]],
     writer: csv.DictWriter,
     report_file,
 ) -> dict[tuple[str, int, int], Path]:
     existing_by_key: dict[tuple[str, int, int], Path] = {}
     existing_files = discover_existing_files(output_root, layouts)
     for existing in existing_files:
-        config = LAYOUT_CONFIGS[existing.layout]
-        if existing.seed not in config.seeds:
+        if not seed_is_target(existing.layout, existing.seed, seed_override):
             if keep_out_of_scope:
                 continue
             existing.path.unlink()
@@ -403,6 +437,12 @@ def normalize_existing_files(
     return existing_by_key
 
 
+def seed_is_target(layout: str, seed: int, seed_override: Optional[set[int]]) -> bool:
+    if seed_override is not None:
+        return seed in seed_override
+    return seed in LAYOUT_CONFIGS[layout].seeds
+
+
 def generate_one(
     index: int,
     total: int,
@@ -410,6 +450,7 @@ def generate_one(
     results_root: Path,
     output_root: Path,
     device: str,
+    old_dynamics: bool,
 ) -> dict:
     config = LAYOUT_CONFIGS[spec.layout]
     layout_dir = output_root / spec.layout
@@ -443,6 +484,8 @@ def generate_one(
         "--num_agents",
         str(config.num_agents),
     ]
+    if old_dynamics:
+        cmd.append("--old_dynamics")
     print(f"[{index}/{total}] generate {spec.layout} seed={spec.seed} checkpoint={spec.checkpoint}")
     try:
         env = os.environ.copy()
